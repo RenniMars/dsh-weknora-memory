@@ -1,0 +1,12 @@
+node_modules/
+data/
+logs/
+wk-inject.config.json
+*.tgz
+*.log
+docs/
+publish.ps1
+发布到npm.cmd
+_secrets/
+token-and-publish.ps1
+一键发布.cmd

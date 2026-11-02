@@ -1,0 +1,67 @@
+{
+  "name": "@rennimars/dsh-weknora-memory",
+  "version": "0.3.0",
+  "description": "Layered context engine for DeepSeek Harness: per-kb WeKnora retrieval fused by RRF, recency decay and hot/warm/cold tiering, standing profile cards and fact-conflict surfacing — budgeted, auditable, editable.",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "writers",
+    "cordis.patch.yml",
+    "wk-inject.config.example.json",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "dshmarket",
+    "deepseek-harness",
+    "memory",
+    "long-term-memory",
+    "context-engineering",
+    "weknora",
+    "rag",
+    "retrieval",
+    "rrf"
+  ],
+  "license": "MIT",
+  "author": "RenniMars",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RenniMars/dsh-weknora-memory.git"
+  },
+  "homepage": "https://github.com/RenniMars/dsh-weknora-memory#readme",
+  "bugs": {
+    "url": "https://github.com/RenniMars/dsh-weknora-memory/issues"
+  },
+  "engines": {
+    "dsh": ">=0.2.1-rc.3",
+    "node": ">=20.11"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-layout"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "test": "node --test --test-timeout=25000 test/*.mjs"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

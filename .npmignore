@@ -1,0 +1,7 @@
+node_modules/
+data/
+logs/
+test/
+docs/
+*.tgz
+wk-inject.config.json

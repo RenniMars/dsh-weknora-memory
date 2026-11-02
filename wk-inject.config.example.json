@@ -1,0 +1,23 @@
+{
+  "enabled": false,
+  "apiUrl": "http://127.0.0.1:8080/api/v1",
+  "apiKey": "",
+  "kbIds": [],
+  "kbNames": {},
+  "kbLabel": "",
+  "timeoutMs": 3000,
+  "maxChars": 2400,
+  "maxHits": 3,
+  "perKbHits": 2,
+  "topK": 10,
+  "rrfK": 60,
+  "neighborChunks": 1,
+  "neighborTimeoutMs": 600,
+  "minScore": 0.1,
+  "minScoreRatio": 0.45,
+  "minQueryChars": 8,
+  "maxQueryChars": 500,
+  "skipSubagents": true,
+  "pinnedMaxChars": 1500,
+  "logFile": "logs/inject.log"
+}

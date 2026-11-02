@@ -1,0 +1,9 @@
+# Bundle layer for @rennimars/dsh-weknora-memory.
+# Mounts one host-plane row: the plugin listens on agent/pre-step and appends a
+# bounded <weknora_context> block when WeKnora returns relevant hits, and mounts the
+# sidebar panel's two routes on the GUI's own /api transport.
+# Runtime settings live in ./wk-inject.config.json next to this file (copy
+# wk-inject.config.example.json); nothing here needs editing.
+- insert:
+    - id: weknora-inject
+      name: "@rennimars/dsh-weknora-memory"

@@ -1,0 +1,57 @@
+{
+  "$comment": "Writers config. Copy to writer.config.json next to this file. No credential belongs in this file: leave apiKey out and set WEKNORA_API_KEY in the environment.",
+  "apiUrl": "http://127.0.0.1:8080/api/v1",
+  "apiKey": "",
+  "sessionsRoot": "",
+  "kbs": {
+    "session": "",
+    "knowledge": "",
+    "material": ""
+  },
+  "ingest": {
+    "enabled": true,
+    "titlePrefix": "会话记录 ",
+    "settleMinutes": 10,
+    "maxDocBytes": 200000,
+    "maxSessionDocs": 150,
+    "skipSubagentSessions": true,
+    "maxAttempts": 3,
+    "pollTimeoutSec": 600
+  },
+  "distill": {
+    "enabled": true,
+    "titlePrefix": "记忆 ",
+    "maxSessionsPerRun": 3,
+    "maxDocsPerRun": 3,
+    "maxInputChars": 30000,
+    "perTurnChars": 1500,
+    "maxEntriesPerSession": 8,
+    "semanticDedupe": {
+      "enabled": true,
+      "scoreMin": 0.66
+    }
+  },
+  "dream": {
+    "enabled": true,
+    "titlePrefix": "[fact] ",
+    "maxLlmCalls": 60,
+    "maxUpdates": 20,
+    "grouping": {
+      "searchTopK": 5,
+      "queryChars": 120,
+      "sameRootScore": 0.5,
+      "crossRootScore": 0.6,
+      "maxCluster": 5
+    }
+  },
+  "profile": {
+    "enabled": true,
+    "path": "data/profile.json",
+    "statsPath": "data/profile-stats.json"
+  },
+  "llm": {
+    "mode": "weknora-session-chat",
+    "modelName": "builtin-deepseek-flash",
+    "timeoutMs": 240000
+  }
+}
