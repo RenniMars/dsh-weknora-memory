@@ -201,3 +201,10 @@ npm test          # node --test test/*.mjs，59 个用例
 ## License
 
 MIT © RenniMars
+
+## 路线图 / Roadmap
+
+本项目的演进计划分阶段推进：先给"检索准不准"一把可量化的尺子，再让事实卡的冲突能被裁决、遗忘能被解释、主题能被归并，最后才谈写入门控。
+完整计划（13 节，含每阶段的目标、改动点、验收与回滚）：[docs/ROADMAP.md](docs/ROADMAP.md)
+当前版本 0.3.0；计划可分批实现、每批独立验收，欢迎在 Issue 区按阶段提方案。
+想改这份计划，请先开 Issue 讨论，达成一致后再改文档，不要直接改 ROADMAP.md。
