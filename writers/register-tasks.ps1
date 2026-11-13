@@ -10,14 +10,14 @@
     .\register-tasks.ps1 -Prefix WK   # rename the task group (default DSH-Memory)
 
   Tasks are registered for the current user only: no admin rights, no system-wide
-  service. Times can be changed in -Times like @{ Ingest='hourly'; Distill='04:30'; Dream='03:30' }.
+  service. Times can be changed in -Times like @{ Ingest='hourly'; Distill='00:00'; Dream='00:30' }.
 #>
 [CmdletBinding()]
 param(
   [switch]$Unregister,
   [string]$Prefix = 'DSH-Memory',
   [string]$Config = '',
-  [hashtable]$Times = @{ Ingest = 'hourly'; Distill = '04:30'; Dream = '03:30' }
+  [hashtable]$Times = @{ Ingest = 'hourly'; Distill = '00:00'; Dream = '00:30' }
 )
 
 $ErrorActionPreference = 'Stop'

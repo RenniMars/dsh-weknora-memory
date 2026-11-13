@@ -25,6 +25,8 @@
 | **画像层** `profile` | soul 规则 / user 画像 / agent 工作习惯 | soul 6 张·300 字 · user 3 张·200 字 · agent 6 张·400 字，单卡 ≤80 字 | 永不打分，按类配额裁剪 |
 | **检索层** `weknora_context` | 本轮检索命中的片段 | ≤2400 字符 · 最多 3 条 | 打分 + 衰减 + 分层共同决定 |
 
+常驻/画像块按**用户轮次**投递（`pinnedOncePerTurn`，默认开）：同一轮的后续工具步只带检索片段，不再重贴同一份常驻内容——DSH 会把注入消息写进会话历史，第二份本来就是纯冗余。一个十步的回答，光这一项就省下九份约 900 字的块。
+
 三份预算是**相加而不是共享**的：检索块撑满 2400 字符也不会挤掉常驻准则（`lib/config.js:26,31`）；画像层按类型分账，避免 user 卡把 agent 层吃空（`lib/config.js:104-110`）。
 
 上限是硬编码契约，不是建议值：`timeoutMs` 被钳到 **4000ms**、`maxChars` 被钳到 **2400**（`lib/config.js:19,26` 的 `TIMEOUT_CAP_MS` / `CHARS_CAP`），手改配置文件也撑不破。
@@ -202,9 +204,21 @@ npm test          # node --test test/*.mjs，59 个用例
 
 MIT © RenniMars
 
+## 发布流程
+
+版本号、CHANGELOG 与 git tag 三处同步，发布由 CI 完成，不在本机手工 `npm publish`：
+
+1. 改代码 → 在 `CHANGELOG.md` 顶部加一节（版本号 + 变更）→ `package.json` 的 `version` 改成同一个号。
+2. `npm test` 全绿。
+3. `git commit` → `git tag vX.Y.Z` → `git push origin main --follow-tags`。
+4. `.github/workflows/release.yml` 校验 tag 与 `package.json` 版本一致后，跑测试、`npm publish --provenance`（用的是仓库 secret `NPM_TOKEN`），再发 GitHub Release。
+5. `.github/workflows/ci.yml` 在每次 push / PR 上跑 Node 20 与 22 两个版本的测试。
+
+回滚：npm 侧 `npm deprecate @rennimars/dsh-weknora-memory@X.Y.Z "原因"` 并发布修正版；GitHub 侧 `git revert` 后重新打 tag，不移动已有 tag。
+
 ## 路线图 / Roadmap
 
 本项目的演进计划分阶段推进：先给"检索准不准"一把可量化的尺子，再让事实卡的冲突能被裁决、遗忘能被解释、主题能被归并，最后才谈写入门控。
 完整计划（13 节，含每阶段的目标、改动点、验收与回滚）：[docs/ROADMAP.md](docs/ROADMAP.md)
-当前版本 0.3.0；计划可分批实现、每批独立验收，欢迎在 Issue 区按阶段提方案。
+当前版本 0.3.1；计划可分批实现、每批独立验收，欢迎在 Issue 区按阶段提方案。
 想改这份计划，请先开 Issue 讨论，达成一致后再改文档，不要直接改 ROADMAP.md。

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 — 常驻块按用户轮次投递
+
+- **修**：常驻/画像块（`pinned_constraints`，实测约 913 字）此前在**每个 step** 都重贴一次；DSH 的 `step()` 会把注入消息 `session.append('user/message', ...)` 写进会话，同一轮的后续步既读得到又不需要第二份。实测 `logs/inject.log` 2975 条里 2386 条（80%）是 `no_user_text` 的纯重播。
+- **改**：`lib/injector.js` 新增 `pinnedForStep(sessionId, prompt)`，按本步的 prompt 文本给常驻块去重——工具续步没有 user 文本（`promptFromMessages` 返回 `""`），同一句 prompt 重复出现也算同轮。会话内第一块永远投递（`pinnedPrompt` 无该会话记录时不去重），所以「首步没有用户文本」不会让整场会话丢常驻层。
+- **配置**：新增 `pinnedOncePerTurn`（默认 `true`，`lib/config.js`）。设为 `false` 恢复旧的每步投递。
+- **日志**：被去重的步记 `pinned_skipped: true`、`pinned_chars: 0`，便于对前后数字。
+- **测试**：新增 2 项（`test/inject.test.mjs`）：同轮续步/同句重问不复投；`pinnedOncePerTurn: false` 保持旧行为。5 个测试文件全绿。
+
 ## 0.3.0 — 写入侧随包发布（可选组件）
 
 - **新增 `lib/weknora.js`**：读侧与写入侧共用的唯一 HTTP 客户端（base URL 拼接、`X-API-Key` 头、超时、`no_api_url|timeout|transport|http_<status>` 错误词表）。`lib/retrieve.js` 的两处内联 fetch 已改为调用它，59 个既有用例保持全绿。

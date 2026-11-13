@@ -4,9 +4,14 @@ logs/
 wk-inject.config.json
 *.tgz
 *.log
-docs/
 publish.ps1
 发布到npm.cmd
 _secrets/
 token-and-publish.ps1
 一键发布.cmd
+
+# 本地残缺仓库备份与本机缓存残留
+.git.broken-*/
+%SystemDrive%/
+# 本机工程笔记（含本机绝对路径），只留本地
+docs/DEV-NOTES.md

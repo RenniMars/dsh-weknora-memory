@@ -237,6 +237,59 @@ test("a hanging backend is cut off by the 1500ms ceiling", async () => {
   console.log("hang elapsed=" + elapsed + "ms reason=" + records[0].reason);
 });
 
+
+/**
+ * The pinned layer is configuration: it renders identically on every step of one user turn,
+ * and DSH appends the injected message to the session, so the first copy stays readable.
+ * A tool-continuation step carries no user-role text, which is what "same turn" looks like
+ * at this hook -- that is why the block is keyed on the prompt text.
+ */
+test("the pinned block is injected once per user turn, not once per step", async () => {
+  const pinnedText = "常驻规则：动手前先看现有实现。";
+  const config = configOf({ pinned: [{ text: pinnedText }] });
+  assert.equal(config.pinnedOncePerTurn, true, "per-turn delivery must be the default");
+  const records = [];
+  const injector = createWeKnoraInjector({
+    config,
+    log: (record) => records.push(record),
+    retrieve: async () => ({ ok: true, hits: syntheticHits(1) }),
+  });
+  const session = () => agentOf("pinned-session");
+  const first = await injector.preStep({ agent: session(), signal: undefined }, nextOf(decisionOf("第一轮提问，带常驻规则")));
+  assert.equal(first.messages.length, 2);
+  assert.ok(first.messages[1].content[0].text.includes(pinnedText), "the first step of a turn carries the block");
+
+  const continuation = {
+    kind: "enter",
+    messages: [{ id: "tr-1", role: "user", content: [{ type: "tool-result", toolCallId: "c1", output: "ok" }], source: { kind: "tool" } }],
+  };
+  const second = await injector.preStep({ agent: session(), signal: undefined }, nextOf(continuation));
+  assert.equal(second, continuation, "a continuation step must not re-inject the block");
+  assert.equal(records[1].pinned_skipped, true);
+  assert.equal(records[1].body_chars ?? 0, 0);
+
+  const repeated = await injector.preStep({ agent: session(), signal: undefined }, nextOf(decisionOf("第一轮提问，带常驻规则")));
+  assert.equal(records[2].pinned_skipped, true, "an identical prompt repeats nothing");
+
+  const nextTurn = await injector.preStep({ agent: session(), signal: undefined }, nextOf(decisionOf("第二轮提问，换个话题再问一遍")));
+  assert.ok(nextTurn.messages[1].content[0].text.includes(pinnedText), "a new user turn gets the block again");
+});
+
+test("pinnedOncePerTurn: false keeps the old per-step delivery", async () => {
+  const pinnedText = "常驻规则：关掉去重时每步都注入。";
+  const config = configOf({ pinned: [{ text: pinnedText }], pinnedOncePerTurn: false });
+  const records = [];
+  const injector = createWeKnoraInjector({ config, log: (record) => records.push(record), retrieve: async () => ({ ok: true, hits: [] }) });
+  const continuation = {
+    kind: "enter",
+    messages: [{ id: "tr-2", role: "user", content: [{ type: "tool-result", toolCallId: "c2", output: "ok" }], source: { kind: "tool" } }],
+  };
+  const enhanced = await injector.preStep({ agent: agentOf("legacy-pinned"), signal: undefined }, nextOf(continuation));
+  assert.equal(enhanced.messages.length, 2);
+  assert.equal(records[0].pinned_only, true);
+  assert.equal(records[0].pinned_skipped, undefined);
+});
+
 test("the same chunk is not injected twice in one session", async () => {
   const config = configOf();
   const hits = syntheticHits(2);
