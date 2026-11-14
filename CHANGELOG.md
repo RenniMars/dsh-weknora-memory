@@ -1,3 +1,10 @@
+## 0.5.2 — 写侧的进度跟着配置文件走，不再住进包里
+
+- 三个写侧脚本（ingest / distill / dream）的状态文件从包目录 `data/writer-state/` 移到配置文件旁边：`<配置文件目录>/data/writer-state/{ingest,distill,dream}.json`，日志同样是 `<配置文件目录>/logs/`。升级 npm 包不会再把记忆一起换掉，也不再要求 `node_modules` 可写。
+- 新增 `writers.stateDir`（默认 `data/writer-state`，相对配置文件所在目录；写绝对路径则原样使用）。`lib/writers-config.js` 解析出 `__stateDir` / `__dataDir` 两个字段给脚本用。
+- `writers/register-tasks.ps1`：默认 `-Prefix DSH`，生成的 `DSH-Session-Ingest` / `DSH-Session-Distill` / `DSH-Memory-Dream` 正好按名字接管老任务，不会两套同时写库；node 探测改成三级回退（`NODE_EXE` → PATH → 本机固定路径），pwsh 里 node 不在 PATH 也能注册。
+- 配置模板与 `writers/config.example.json` 补上 `stateDir`。
+
 ## 0.5.1 — 写入侧也住进同一个配置文件
 
 用户的原话是「定时器任务，就是写入方，也要放进去」。以前写侧四个脚本各找 `writers/writer.config.json`，

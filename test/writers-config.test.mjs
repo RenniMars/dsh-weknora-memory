@@ -49,6 +49,16 @@ test("the writers block of the shared config is what the write side reads", () =
   assert.equal(resolved.cfg.__enabled, true);
 });
 
+test("state and logs live next to the config file, not inside the package", () => {
+  const { env, dir } = homeWith(JSON.stringify({ writers: { kbs: { session: "kb-s" } } }));
+  const resolved = loadWritersConfigFor({ examplePath: EXAMPLE, legacyPath: "", env });
+  assert.equal(resolved.cfg.__stateDir, path.join(dir, "data", "writer-state"));
+  const custom = homeWith(JSON.stringify({ writers: { stateDir: "/var/wk/state" }, apiKey: "k" }));
+  const overridden = loadWritersConfigFor({ examplePath: EXAMPLE, legacyPath: "", env: custom.env });
+  assert.equal(overridden.cfg.__stateDir, "/var/wk/state");
+  assert.equal(overridden.cfg.__dataDir, path.dirname("/var/wk/state"));
+});
+
 test("the shared config may carry JSONC comments and trailing commas", () => {
   const { env, dir } = homeWith(`{
   // 连接

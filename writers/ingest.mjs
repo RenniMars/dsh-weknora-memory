@@ -25,7 +25,9 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = path.resolve(HERE, '..');
 const CONFIG_NAME = 'writer.config.json';
 const EXAMPLE_NAME = 'config.example.json';
-const STATE_PATH = path.join(PKG_ROOT, 'data', 'writer-state', 'ingest.json');
+// 状态文件跟着配置文件走（<配置目录>/data/writer-state），可用 writers.stateDir 覆盖。
+let STATE_PATH = path.join(PKG_ROOT, 'data', 'writer-state', 'ingest.json');
+const statePathOf = (cfg) => path.join(cfg && cfg.__stateDir ? cfg.__stateDir : path.join(PKG_ROOT, 'data', 'writer-state'), 'ingest.json');
 const REQUEST_TIMEOUT_MS = 30000;
 const PAGE_SIZE = 100;
 const MAX_PAGES = 20;
@@ -102,11 +104,12 @@ function section(base, over) {
   return Object.assign({}, base && typeof base === 'object' ? base : {}, over && typeof over === 'object' ? over : {});
 }
 
-/** 相对包根目录解析（与插件读侧 profile.path 的口径一致）。 */
+/** 相对"配置文件所在目录"解析：与插件读侧同一口径，升级包不会搬走画像与状态。 */
+let CONFIG_BASE = PKG_ROOT;
 function resolveFromRoot(value) {
   const text = String(value == null ? '' : value).trim();
   if (!text) return '';
-  return path.isAbsolute(text) ? text : path.resolve(PKG_ROOT, text);
+  return path.isAbsolute(text) ? text : path.resolve(CONFIG_BASE, text);
 }
 
 export function num(value, fallback) {
@@ -638,6 +641,8 @@ export async function run(argv) {
   let loaded;
   try {
     loaded = loadWriterConfig(list);
+    STATE_PATH = statePathOf(loaded.cfg);
+    CONFIG_BASE = loaded.cfg.__configBase || PKG_ROOT;
   } catch (err) {
     log.error(err.message);
     return 2;

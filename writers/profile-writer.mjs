@@ -394,7 +394,7 @@ const USAGE = [
   '  --approve <ids>    人工批准，逗号分隔',
   '  --reject <ids>     人工驳回（转 disputed），逗号分隔',
   '  --no-degrade       本轮不做降级，只报告',
-  '  --profile <path>   覆盖 config.profile.path（相对包根的相对路径或绝对路径）',
+  '  --profile <path>   覆盖 config.profile.path（相对配置文件目录的相对路径或绝对路径）',
   '  --stats <path>     覆盖 config.profile.statsPath',
   '  --verbose          打印配置解析与预算明细',
   '  -h, --help         打印本帮助并退出 0',
@@ -402,11 +402,12 @@ const USAGE = [
   '退出码：0 成功；1 运行期失败（配置/IO）；2 参数或提议校验失败。',
 ].join('\n');
 
-/** 配置里的相对路径按包根目录解析；命令行覆盖值按调用者当前目录解析。 */
+/** 配置里的相对路径按"配置文件所在目录"解析（与读侧同一口径）；命令行覆盖值按调用者当前目录解析。 */
+let CONFIG_BASE = ROOT;
 function resolvePath(value, { fromRoot }) {
   const text = String(value || '');
   if (!text) return '';
-  return fromRoot ? path.resolve(ROOT, text) : path.resolve(text);
+  return fromRoot ? path.resolve(CONFIG_BASE, text) : path.resolve(text);
 }
 
 function cli(argv) {
@@ -419,6 +420,7 @@ function cli(argv) {
   let cfg;
   try {
     cfg = loadConfig(value('--config'));
+    CONFIG_BASE = cfg.__configBase || ROOT;
   } catch (error) {
     console.error('[fail] ' + (error?.message || error));
     return 1;

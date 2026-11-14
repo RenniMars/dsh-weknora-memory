@@ -7,7 +7,7 @@
 
     .\register-tasks.ps1              # register (or update) the tasks
     .\register-tasks.ps1 -Unregister  # remove them
-    .\register-tasks.ps1 -Prefix WK   # rename the task group (default DSH-Memory)
+    .\register-tasks.ps1 -Prefix WK   # rename the task group (default DSH: takes over the old DSH-Session-* tasks by name)
 
   Tasks are registered for the current user only: no admin rights, no system-wide
   service. Times come from the shared config's writers.tasks (ingest: hourly|every6h,
@@ -17,7 +17,7 @@
 [CmdletBinding()]
 param(
   [switch]$Unregister,
-  [string]$Prefix = 'DSH-Memory',
+  [string]$Prefix = 'DSH',
   [string]$Config = '',
   [hashtable]$Times = @{},
   [switch]$Force
@@ -25,7 +25,14 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$node = (Get-Command node -ErrorAction Stop).Source
+# pwsh 里 node 常常不在 PATH（尤其是从快捷方式起的窗口），所以三级回退：环境变量 → PATH → 本机固定路径。
+$node = $env:NODE_EXE
+if (-not $node) {
+  $cmd = Get-Command node -ErrorAction SilentlyContinue
+  if ($cmd) { $node = $cmd.Source }
+  elseif (Test-Path 'D:/basetools/node/node.exe') { $node = 'D:/basetools/node/node.exe' }
+  else { throw 'node not found: set NODE_EXE to the node.exe path' }
+}
 
 # 时间与开关都从共享配置的 writers 段来：一个文件管四件事，别在这里再写死一份。
 $effective = @{ ingest = 'hourly'; distill = '00:00'; dream = '00:30' }

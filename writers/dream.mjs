@@ -96,9 +96,17 @@ const PREFIX = String(D.titlePrefix || '[fact] ');
 const MAX_LLM = Math.max(0, Number(process.env.DREAM_MAX_LLM || D.maxLlmCalls) || 0);
 const MAX_UPDATES = Math.max(0, Number(process.env.DREAM_MAX_UPDATES || D.maxUpdates) || 0);
 const GRP = Object.assign({ searchTopK: 5, queryChars: 120, sameRootScore: 0.5, crossRootScore: 0.6, maxCluster: 5 }, D.grouping || {});
-const REPORT_DIR = path.resolve(ROOT, String(D.reportDir || 'logs/dream'));
-const STATE_PATH = path.resolve(ROOT, String(D.statePath || 'data/dream-state.json'));
-const LOG_PATH = path.resolve(ROOT, String(D.logPath || 'logs/dream.log'));
+// 状态、报告与日志都落在配置文件旁边（<配置目录>/data/writer-state、<配置目录>/logs），
+// 不写进 node_modules：升级包不该带走记忆，也不该要求包目录可写。
+const DATA_BASE = CFG.__stateDir || path.resolve(ROOT, 'data', 'writer-state');
+const resolveData = (value, fallback) => {
+  const text = String(value ?? '').trim() || fallback;
+  if (path.isAbsolute(text)) return text;
+  return path.resolve(CFG.__dataDir || ROOT, text);
+};
+const REPORT_DIR = resolveData(D.reportDir, 'logs/dream');
+const STATE_PATH = resolveData(D.statePath, path.join('writer-state', 'dream.json'));
+const LOG_PATH = resolveData(D.logPath, 'logs/dream.log');
 const PARSE_TIMEOUT_MS = (Number(D.parseTimeoutSec) || 180) * 1000;
 const LLM_TIMEOUT_MS = Number(CFG.llm?.timeoutMs) || 240000;
 const REQUEST_TIMEOUT_MS = Number(CFG.requestTimeoutMs) || 30000;

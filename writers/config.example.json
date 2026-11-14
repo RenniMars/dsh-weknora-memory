@@ -59,5 +59,6 @@
     "ingest": "hourly",
     "distill": "00:00",
     "dream": "00:30"
-  }
+  },
+  "stateDir": "data/writer-state"
 }

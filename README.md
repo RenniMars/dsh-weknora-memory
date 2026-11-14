@@ -83,7 +83,7 @@ agent/pre-step
 | `writers/dream.mjs` | 事实卡裁决 S0–S4，只改 header 状态；`--self-test` 可离线跑 |
 | `writers/profile-writer.mjs` | `data/profile.json` 的唯一写入者；不带 `--write` 就只打印 diff |
 | `writers/register-tasks.ps1` | 幂等注册/更新计划任务（`-Unregister` 撤销，时间取自配置里的 `writers.tasks`） |
-| `writers/print-config.mjs` | 打印写侧最终解析出的配置（来源、每段摘要、密钥打码），排障第一步 |
+| `writers/print-config.mjs` | 打印写侧最终解析出的配置（来源、每段摘要、密钥打码），排障第一步。状态与日志的落点也由这里给出的 `writers.stateDir` 决定 |
 | `writers/run-all.cmd` | 手动跑一轮：`run-all.cmd [--dry-run] [ingest|distill|dream|profile]` |
 
 三步启用（**不用第二份配置文件**：写侧和读侧共用第九节那一个文件）：
@@ -192,7 +192,7 @@ not configured yet, injection stays silent: missing apiKey (or WEKNORA_API_KEY) 
 | API key | 服务端 401（工具调用直接报错） | `apiKey`，或环境变量 `WEKNORA_API_KEY` |
 | 知识库范围 | 没有检索范围，注入恒为空 | `kbIds`（不知道 id 就问模型："用 `weknora_list_knowledge_bases` 列一下知识库"） |
 
-填完重启，日志会多一行 `backend ok: N knowledge base(s) visible`——那就是通了；如果写的是 `backend unreachable: …`，按提示回去查 `apiUrl` / `apiKey`。包本身依旧不带任何配置和凭据（`data/`、`logs/` 也在 `.npmignore` 里），所以升级换版本不会动你这份文件。
+填完重启，日志会多一行 `backend ok: N knowledge base(s) visible`——那就是通了；如果写的是 `backend unreachable: …`，按提示回去查 `apiUrl` / `apiKey`。包本身依旧不带任何配置和凭据（`data/`、`logs/` 也在 `.npmignore` 里），所以升级换版本不会动你这份文件。写侧的进度状态同理：它跟着这份配置文件走（`writers.stateDir`，默认同目录的 `data/writer-state/`），不在包目录里。
 
 ## 九、配置
 
@@ -226,6 +226,7 @@ not configured yet, injection stays silent: missing apiKey (or WEKNORA_API_KEY) 
 - **四个工具**：`toolsEnabled`（默认 `true`）总开关；`toolPrefix` 改名；`tools: { listKnowledgeBases, search, readDocument, ask }` 逐个关；`toolAgentId` 填了才走 ReAct 管线，`toolMaxResults` / `toolMaxChunkChars` / `toolRequestTimeoutMs` / `toolChatTimeoutMs` / `toolResourceUrls` 是它们各自的预算。关掉 `toolsEnabled` 不影响每轮注入。
 - 其余参数（超时、字符上限、命中数、阈值、RRF k、邻块扩展、衰减半衰期与下限、冷热分层配额、画像卡配额、事实卡权重、常驻块投递模式与刷新轮数、日志路径）全在同一个文件里，模板已逐个写默认值加注释；不改就是默认。
 - **写入侧也在同一个文件里**：`writers` 段管四个定时脚本（会话沉淀 / 结论蒸馏 / 事实裁决 / 画像复核）。默认 `"writers": { "enabled": false }`——不打开就不会创建计划任务、不会往库里写东西。打开要填的三样：`writers.enabled: true`、`writers.kbs` 的三个库 id（会话记忆 / 知识 / 资料）、`writers.sessionsRoot`（DSH 转录目录）；计划任务时间在 `writers.tasks`（`hourly` 或 `HH:MM`）。改完跑 `node writers/print-config.mjs` 可以确认它到底读到了哪份文件、哪个库。
+- **写侧的状态不放在包里**：三个脚本的进度（哪些会话已入库、哪些结论已写过、昨夜裁决过哪些组）默认落在 `<配置文件目录>/data/writer-state/{ingest,distill,dream}.json`，日志落在 `<配置文件目录>/logs/`。想换地方就在 `writers.stateDir` 写一个路径（相对本配置文件，或写绝对路径）。这样升级 npm 包不会把记忆一起换掉，也不需要 `node_modules` 可写。
 - 包里另附一份纯 JSON 的同义文件 `wk-inject.config.example.json`（`enabled: false`、无凭据），给不接受注释的老宿主或配置中心用；正常使用不需要它，插件启动时写的那份就够。
 - 画像卡（`profile.cards`）与衰减状态是**数据**不是配置，默认落在同目录的 `data/` 下，由夜间任务写；想手动改某张卡可以在配置里直接塞 `profile.cards`。
 

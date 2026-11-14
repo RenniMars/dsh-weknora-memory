@@ -50,6 +50,7 @@ if (asJson) {
     enabled: resolved.cfg.__enabled === true,
     tasks: { ingest: String(tasks.ingest || 'hourly'), distill: String(tasks.distill || '00:00'), dream: String(tasks.dream || '00:30') },
     kbs: resolved.cfg.kbs ?? {},
+    stateDir: resolved.cfg.__stateDir ?? '',
     apiKeySet: Boolean(resolved.cfg.apiKey)
   }, null, 2));
 } else {
@@ -59,5 +60,6 @@ if (asJson) {
   console.log('[config] sessionsRoot=' + (resolved.cfg.sessionsRoot || '(空)'));
   console.log('[config] kbs=' + JSON.stringify(resolved.cfg.kbs));
   console.log('[config] tasks=' + JSON.stringify(resolved.cfg.tasks));
+  console.log('[config] stateDir=' + (resolved.cfg.__stateDir || '(默认)') + '（状态与日志落这里，不在包目录）');
   console.log('[config] 段落: ' + Object.keys(resolved.cfg).filter((k) => resolved.cfg[k] && typeof resolved.cfg[k] === 'object').join(', '));
 }

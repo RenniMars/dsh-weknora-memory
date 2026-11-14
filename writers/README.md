@@ -7,7 +7,7 @@
 1. **配置**：默认读**共享配置文件** `~/.dsh/wk-inject/wk-inject.config.json` 的 `writers` 段（与读侧插件同一份，见 `lib/writers-config.js`）；`--config <path>` 指定别的文件时只认那一份，不叠加。共享配置没有 `writers` 段时回退本目录的 `writer.config.json`，再没有就用 `config.example.json` 的默认值，并在日志里说明来源。排障用 `node writers/print-config.mjs` 看它究竟读了哪份。
 2. **凭证**：`apiUrl` 形如 `http://127.0.0.1:8080/api/v1`（**含**版本前缀，与插件配置一致）；`apiKey` 取环境变量 `WEKNORA_API_KEY`，没有就用共享配置里的 `apiKey`；`writer.config.json` 里的 `apiKey` 一律忽略（避免顺手把密钥提交进仓库）。
 3. **HTTP**：一律通过 `../lib/weknora.js` 的 `request()`，不自己写 fetch。
-4. **路径**：`profile.path` / `profile.statsPath` 相对**包根目录**（本目录的上一级）解析，与插件一致。
+4. **路径**：`profile.path` / `profile.statsPath` 相对**配置文件所在目录**解析（与插件读侧同一口径，默认就是 `~/.dsh/wk-inject/`）；写侧自己的进度状态与日志也落在那里——`writers.stateDir`（默认 `data/writer-state/`）与 `logs/`，**不写进包目录**，升级 npm 包不会带走记忆，也不需要 `node_modules` 可写。可用绝对路径覆盖。
 5. **演练**：每个脚本都支持 `--dry-run`（只打印计划，不写库、不写文件）与 `--verbose`。
 6. **退出码**：0 成功；非 0 失败。失败必须写日志并返回非 0，不能静默。
 7. **幂等**：同一轮重复执行不得产生重复文档（按标题前缀 + 内容哈希判定）。
@@ -21,4 +21,4 @@
 | `dream.mjs` | 每日（`writers.tasks.dream`，默认 00:30） | 事实卡裁决（S0..S4） |
 | `profile-writer.mjs` | 紧接 dream（rc=0 后） | 画像唯一写入者 |
 
-`register-tasks.ps1` 按 `writers.tasks` 的时间注册计划任务（幂等，`-Unregister` 反注册；`writers.enabled` 为 false 时拒绝注册，`-Force` 可硬来）；`run-all.cmd` 手动跑一轮。
+`register-tasks.ps1` 按 `writers.tasks` 的时间注册计划任务（幂等，`-Unregister` 反注册；`writers.enabled` 为 false 时拒绝注册，`-Force` 可硬来；默认 `-Prefix DSH`，任务名 `DSH-Session-Ingest` / `DSH-Session-Distill` / `DSH-Memory-Dream` 会按名字接管旧任务，不会两套同时写库；node 路径三级回退：`NODE_EXE` → PATH → 本机固定路径）；`run-all.cmd` 手动跑一轮。

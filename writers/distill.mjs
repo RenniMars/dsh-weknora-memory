@@ -27,7 +27,9 @@ import {
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = path.resolve(HERE, '..');
-const STATE_PATH = path.join(PKG_ROOT, 'data', 'writer-state', 'distill.json');
+// 状态文件跟着配置文件走（<配置目录>/data/writer-state），可用 writers.stateDir 覆盖。
+let STATE_PATH = path.join(PKG_ROOT, 'data', 'writer-state', 'distill.json');
+const statePathOf = (cfg) => path.join(cfg && cfg.__stateDir ? cfg.__stateDir : path.join(PKG_ROOT, 'data', 'writer-state'), 'distill.json');
 const REQUEST_TIMEOUT_MS = 30000;
 const SID_TAIL = 8;
 
@@ -718,6 +720,7 @@ export async function run(argv) {
   let loaded;
   try {
     loaded = loadWriterConfig(list);
+    STATE_PATH = statePathOf(loaded.cfg);
   } catch (err) {
     log.error(err.message);
     return 2;
