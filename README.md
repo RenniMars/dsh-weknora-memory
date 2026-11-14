@@ -82,7 +82,8 @@ agent/pre-step
 | `writers/distill.mjs` | 会话 → 结论 → 库②（含语义去重，LLM 走 WeKnora 会话网关） |
 | `writers/dream.mjs` | 事实卡裁决 S0–S4，只改 header 状态；`--self-test` 可离线跑 |
 | `writers/profile-writer.mjs` | `data/profile.json` 的唯一写入者；不带 `--write` 就只打印 diff |
-| `writers/register-tasks.ps1` | 幂等注册/更新计划任务（`-Unregister` 撤销，时间取自配置里的 `writers.tasks`） |
+| `writers/register-tasks.ps1` | 幂等注册/更新计划任务（`-Unregister` 撤销，时间取自配置里的 `writers.tasks`；默认走隐藏启动器不弹窗，`-Visible` 才回到控制台窗口） |
+| `writers/hidden/run-hidden-cmd.vbs` | 隐藏启动器模板；注册时复制到 `<WK_INJECT_HOME>/bin/`，任务是 `wscript.exe` 起它 |
 | `writers/print-config.mjs` | 打印写侧最终解析出的配置（来源、每段摘要、密钥打码），排障第一步。状态与日志的落点也由这里给出的 `writers.stateDir` 决定 |
 | `writers/run-all.cmd` | 手动跑一轮：`run-all.cmd [--dry-run] [ingest|distill|dream|profile]` |
 
@@ -98,6 +99,8 @@ node node_modules\@rennimars\dsh-weknora-memory\writers\print-config.mjs
 # 3) 注册计划任务（enabled 还是 false 时会拒绝注册，加 -Force 可硬来）
 powershell -ExecutionPolicy Bypass -File node_modules\@rennimars\dsh-weknora-memory\writers\register-tasks.ps1
 ```
+
+注册出来的任务不会弹窗：动作是 `wscript.exe "<WK_INJECT_HOME>\bin\run-hidden-cmd.vbs" "<WK_INJECT_HOME>\bin\<step>.cmd"`，由那个 `.cmd` 把 node 的输出追加到 `<WK_INJECT_HOME>\logs\<step>.log`（5 MB 轮转到 `.old`）。想看着它跑就加 `-Visible`，会退回直接起 `node.exe`。代价要说清楚：wscript 立刻返回，调度器拿不到 node 的退出码，失败只能从日志里的 `[hidden] <step> failed` 看。
 
 四条纪律：
 

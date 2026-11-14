@@ -1,3 +1,22 @@
+## 0.5.3 — 定时任务不再弹黑窗
+
+用户的原话是「这个是啥窗口？能不能让他后台隐形执行」——每小时一次的 ingest 每次触发都在桌面闪一个
+node 控制台，而同一台机器上别的任务早就用 wscript 包着跑了，只有写侧三个是裸跑。
+
+- `writers/register-tasks.ps1` 默认改走隐藏启动器：任务动作从 `node.exe <step>.mjs` 换成
+  `wscript.exe "<WK_INJECT_HOME>\bin\run-hidden-cmd.vbs" "<WK_INJECT_HOME>\bin\<step>.cmd"`。
+  wscript 是 GUI 子系统程序，起进程时不创建控制台；`.cmd` 再以隐藏窗口承接 node 的输出。
+  新增 `-Visible` 保留旧行为，排障时用。
+- 新增 `writers/hidden/run-hidden-cmd.vbs` 模板：注册时复制到 `<WK_INJECT_HOME>/bin/`，
+  三个 `<step>.cmd` 也在那里生成。`<WK_INJECT_HOME>` 与 `lib/config.js` 同一套解析
+  （`WK_INJECT_HOME` → `<DSH_HOME>/wk-inject` → `~/.dsh/wk-inject`），两边不许走偏。
+- 隐藏运行必须留痕：`.cmd` 把 stdout+stderr 追加进 `<WK_INJECT_HOME>/logs/<step>.log`，
+  超过 5 MB 轮转到 `.old`。原来的控制台一关输出就没了，失败了无从查起。
+- 代价写在明处：`wscript` 立即返回，调度器拿不到 node 的退出码，`LastTaskResult` 不再有意义，
+  失败看日志里的 `[hidden] <step> failed`。任务名、触发器、时间配置都没变；
+  `-Unregister` 连带删掉生成的启动器，日志保留。
+- 顺手修 `Verify with:` 那行：`'a' + $Prefix + 'b'` 被当成三个参数传给 `Write-Output`，输出被拆成四行。
+
 ## 0.5.2 — 写侧的进度跟着配置文件走，不再住进包里
 
 - 三个写侧脚本（ingest / distill / dream）的状态文件从包目录 `data/writer-state/` 移到配置文件旁边：`<配置文件目录>/data/writer-state/{ingest,distill,dream}.json`，日志同样是 `<配置文件目录>/logs/`。升级 npm 包不会再把记忆一起换掉，也不再要求 `node_modules` 可写。
