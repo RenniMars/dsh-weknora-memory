@@ -2,6 +2,9 @@
 
 ## 0.3.1 — 常驻块按用户轮次投递
 
+- **修（画像闸门）**：`writers/profile-writer.mjs` 的复核此前只要「有来源 / 不重复 / 正文 ≤60 字」就把 `proposed` 转 `active`——一晚的静默被当成了决定。现在补上 `export const ATTEST_MIN = 3`：同一话题被反复看到（`propose()` 已有的 `attest` 合并计数）至少 3 次，或卡上 `approve: true`（`--approve` / `decide()` 写入的人工批准），才允许转正，否则记 `needs_approval_or_attest_N_of_3` 保持 `proposed`。
+- **修（CI）**：`test/inject.test.mjs`、`test/layers.test.mjs` 曾 import 本机私有兄弟目录 `../../../_wk_dream/profile-writer.mjs`，本机绿、CI 上 `ERR_MODULE_NOT_FOUND`。改为仓库自带的 `../writers/profile-writer.mjs`。`test/writers.test.mjs` 的 W4 相应改成「人工批准的卡转正 + 只有 2 次证言的卡仍留 proposed」。66 个用例全绿。
+
 - **修**：常驻/画像块（`pinned_constraints`，实测约 913 字）此前在**每个 step** 都重贴一次；DSH 的 `step()` 会把注入消息 `session.append('user/message', ...)` 写进会话，同一轮的后续步既读得到又不需要第二份。实测 `logs/inject.log` 2975 条里 2386 条（80%）是 `no_user_text` 的纯重播。
 - **改**：`lib/injector.js` 新增 `pinnedForStep(sessionId, prompt)`，按本步的 prompt 文本给常驻块去重——工具续步没有 user 文本（`promptFromMessages` 返回 `""`），同一句 prompt 重复出现也算同轮。会话内第一块永远投递（`pinnedPrompt` 无该会话记录时不去重），所以「首步没有用户文本」不会让整场会话丢常驻层。
 - **配置**：新增 `pinnedOncePerTurn`（默认 `true`，`lib/config.js`）。设为 `false` 恢复旧的每步投递。

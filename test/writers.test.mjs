@@ -69,7 +69,8 @@ test("W4: profile-writer activates a reviewable card and disputes a degraded one
     writeFileSync(profilePath, JSON.stringify({
       version: 1,
       cards: [
-        card("user.new1", "proposed", "用户偏好 Java 后端，接口层可用 Node", { proposedAt: "2026-01-02" }),
+        card("user.new1", "proposed", "用户偏好 Java 后端，接口层可用 Node", { proposedAt: "2026-01-02", approve: true }),
+        card("user.new2", "proposed", "用户喜欢把日志先截断再读", { proposedAt: "2026-01-02", attest: 2 }),
         card("user.old1", "active", "用户长期使用 VS Code 作为主编辑器", { proposedAt: "2025-12-01", approvedAt: "2025-12-02" }),
       ],
     }, null, 2));
@@ -81,10 +82,12 @@ test("W4: profile-writer activates a reviewable card and disputes a degraded one
 
     const after = JSON.parse(readFileSync(profilePath, "utf8"));
     const byId = Object.fromEntries(after.cards.map((c) => [c.id, c]));
-    assert.equal(byId["user.new1"].status, "active", "a sourced, unique, short proposed card must be approved");
+    assert.equal(byId["user.new1"].status, "active", "a human-approved, sourced, unique, short card must activate");
+    assert.equal(byId["user.new2"].status, "proposed", "two attestations are not a decision: " + JSON.stringify(byId["user.new2"]));
     assert.equal(byId["user.old1"].status, "disputed", "an active card with a degrade marker must be disputed");
     assert.equal(byId["user.new1"].text, "用户偏好 Java 后端，接口层可用 Node", "the review must not rewrite card text");
     assert.equal(byId["user.old1"].text, "用户长期使用 VS Code 作为主编辑器", "the review must not rewrite card text");
+    assert.equal(byId["user.new2"].text, "用户喜欢把日志先截断再读", "the review must not rewrite card text");
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }

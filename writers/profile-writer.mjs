@@ -53,6 +53,9 @@ export const REVIEW_TEXT_MAX = 60;
  */
 export const DEGRADE_AFTER = 50;
 
+/** 同一话题的重复出现算一次'证言'；攒够这么多次、或人工批准，才允许 proposed -> active。 */
+export const ATTEST_MIN = 3;
+
 const clean = (value) => String(value ?? '').replace(/\s+/g, ' ').trim();
 const charLen = (value) => Array.from(clean(value)).length;
 const KINDS = new Set(['user', 'agent']);
@@ -226,6 +229,13 @@ export function review(profile, { today = dayOf(), stats = {}, degrade = true } 
       const conflict = conflictOf(card, others);
       if (conflict) {
         decisions.push({ id: card.id, action: 'kept_proposed', reason: 'conflict:' + conflict });
+        continue;
+      }
+      // 一晚的静默不是决定：只有同一话题被反复看到（attest 攒够），或人显式批准，才转正。
+      const approved = card.approve === true;
+      const attest = Number(card.attest) || 0;
+      if (!approved && attest < ATTEST_MIN) {
+        decisions.push({ id: card.id, action: 'kept_proposed', reason: 'needs_approval_or_attest_' + attest + '_of_' + ATTEST_MIN });
         continue;
       }
       card.status = 'active';

@@ -21,7 +21,7 @@ import {
 } from "../lib/format.js";
 import { decayFactor } from "../lib/decay.js";
 import { DEFAULT_TIER, applyTierQuota, tierOf } from "../lib/tier.js";
-import { propose, profileBudget, review, decide } from "../../../_wk_dream/profile-writer.mjs";
+import { propose, profileBudget, review, decide } from "../writers/profile-writer.mjs";
 
 const TEST_LOG = join(tmpdir(), "wk-layers.log");
 

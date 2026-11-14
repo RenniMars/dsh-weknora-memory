@@ -11,7 +11,7 @@ import { DAY_MS, applyDecay, decayFactor, readState, stateSize, writeHits, write
 import { PINNED_TAG, PROFILE_TAG_MAX, applyFactCards, buildInjection, buildPinned, cleanText, composeInjection, conflictLines, parseFactCard, profileLine, selectHits, selectProfileCards, selectProfileCardsDetailed } from "../lib/format.js";
 import { mergeKbGroups, searchWeKnora } from "../lib/retrieve.js";
 import { CONTEXT_QUERY_CHARS, PROFILE_DEGRADE_AFTER, SOURCE_KIND, createWeKnoraInjector, promptFromMessages, recordProfileRounds } from "../lib/injector.js";
-import { DEGRADE_AFTER, propose, review, run as runWriter } from "../../../_wk_dream/profile-writer.mjs";
+import { DEGRADE_AFTER, propose, review, run as runWriter } from "../writers/profile-writer.mjs";
 import { PANEL_API_PREFIX, addCard, aggregateRetrieval, panelRoutes, removeCard, updateCard } from "../lib/panel.js";
 import { DEFAULT_TIER, applyTierQuota, parseTimeWindow, tierOf } from "../lib/tier.js";
 
