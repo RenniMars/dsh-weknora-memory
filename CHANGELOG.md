@@ -1,3 +1,17 @@
+## 0.4.0 — 四个 WeKnora 工具并入
+
+同一份钥匙、同一批知识库，除了"每轮自动推"，现在也能"模型自己拉"：
+
+- 新增 `weknora_list_knowledge_bases` / `weknora_search` / `weknora_read_document` / `weknora_ask`，vendor 自 `@wxg-prc-cpg/dsh-weknora` 0.1.0（腾讯 WeKnora，MIT）：`lib/tools.js`、`lib/tools-client.js`、`lib/render.js`、`lib/tool-config.js`。
+- 新增 `lib/mount-tools.js`：本仓库配置 → vendor 配置的唯一映射缝，并在 `ctx.inject(["tools"])` 里挂载。没有 `tools` 服务的宿主只是少四个工具，每轮注入照旧。
+- 注册是逐个进行的：某个工具名被别的插件占用时只损失那一个，其余照常挂上，失败写进日志（`tool not mounted: <name> -- <reason>`）。
+- 配置新增 `toolsEnabled`（默认 true）、`toolPrefix`（默认 `weknora`，与官方 0.1.0 同名，两个都装会撞名）、`toolAgentId`（填了才走 ReAct 管线，默认 RAG）、`toolTenantId`、`toolMaxResults`、`toolMaxChunkChars`、`toolRequestTimeoutMs`、`toolChatTimeoutMs`、`toolResourceUrls`、`tools: { listKnowledgeBases, search, readDocument, ask }`。
+- 新增 `test/tools.test.mjs`（4 例）：配置映射、开关与逐个注册、search 的投影与渲染、`ask` 走本地 SSE 服务端把 RAG 与 agent 两条管线都跑通。
+- **配置与用户数据移出包目录**：`lib/config.js` 新增 `userDataDir()` / `userConfigPath()`，查找顺序为 `WK_INJECT_CONFIG` → 宿主传入路径 → `<DSH_HOME>/wk-inject/wk-inject.config.json`（`DSH_HOME` 默认 `~/.dsh`，可用 `WK_INJECT_HOME` 覆盖）→ 包内旧位置；`profile.path`、`decay.statePath`、`logFile` 一律相对配置文件所在目录解析。这样从 npm 装包时，升级替换整个包目录也不会丢配置、17 张画像卡、衰减状态和日志。
+- 新增 `test/config-home.test.mjs`（5 例）：用户级配置优先、`WK_INJECT_CONFIG` 覆盖 home、未开启时保持测试隔离、无文件时回退包目录、`WK_INJECT_HOME`/`DSH_HOME` 解析。全量 76 例通过。
+
+实测（本机 WeKnora）：三个库列全；`search` 命中真实片段；`read_document` 拿到 25 块中的前 3 块且 `has_more: true`；`ask` 走 RAG 返回答案加 8 条引用。
+
 # Changelog
 
 ## 0.3.3 — 常驻块改为整场一次，压缩后补一次

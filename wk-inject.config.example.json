@@ -19,5 +19,14 @@
   "maxQueryChars": 500,
   "skipSubagents": true,
   "pinnedMaxChars": 1500,
-  "logFile": "logs/inject.log"
+  "logFile": "logs/inject.log",
+  "toolsEnabled": true,
+  "toolPrefix": "weknora",
+  "toolAgentId": "",
+  "tools": {
+    "listKnowledgeBases": true,
+    "search": true,
+    "readDocument": true,
+    "ask": true
+  }
 }

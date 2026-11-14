@@ -101,6 +101,26 @@ powershell -ExecutionPolicy Bypass -File writers\register-tasks.ps1
 - **共用一份 HTTP**：读侧 `lib/retrieve.js` 与写入侧全部走 `lib/weknora.js`，`X-API-Key` 头与错误词表只有一处实现。
 - **失败可见**：退出码 0/1/2/3 有明确语义，失败是一条可读错误而不是异常栈——这与读侧「失败即静默」刻意相反，因为定时任务没有人在看着。
 
+### 手动侧：四个工具（`weknora_*`）
+
+注入是"我替你查"，工具是"你决定查"。同一份钥匙、同一批知识库，两条路并存：
+
+| 工具 | 什么时候用 | 拿回来什么 |
+|---|---|---|
+| `weknora_list_knowledge_bases` | 想知道这台部署能看到哪些库、各自的 id | 库名 + id + 描述（本次实测 3 个：资料 / 会话记忆 / 知识） |
+| `weknora_search` | 要找具体段落、要自己读原文再判断（最快，优先用这个） | 命中列表（rank / chunk_id / 文档名 / chunk 序号 / score / 截断后的正文）+ 按名命中的文档 |
+| `weknora_read_document` | 已定位到某篇，要顺着读下去 | 分页片段（`page` / `page_size`，按 `chunk_index` 升序拼好）+ 总块数与 `has_more` |
+| `weknora_ask` | 跨很多文档的综述题，让服务端自己做查询改写 + 重排 + 总结 | 答案 + 引用（文档名 / chunk / knowledge_id）+ 用到的工具链 + WeKnora 会话 id（可追问） |
+
+四个工具不是本仓库发明的：REST 客户端、SSE 读取器与工具定义 vendor 自腾讯 WeKnora 官方的 `@wxg-prc-cpg/dsh-weknora`（MIT），本仓库只做三件事——把它们接到自己的配置键上（`lib/mount-tools.js`）、在 `ctx.inject(["tools"])` 里挂载、以及让"某个工具名字被占用"只损失那一个工具（逐个注册、失败单独记日志，不会四个一起掉）。
+
+几个刻意的选择：
+
+- **挂载与注入互不牵连**：没有 `tools` 服务的宿主（headless）只是少四个工具，每轮注入照旧；工具配置写错也只丢工具。
+- **`ask` 默认走 RAG，不设 `toolAgentId` 就绝不走 agent 管线**：ReAct 管线成本高一个量级，要它得显式配置。
+- **工具名前缀可改**（`toolPrefix`，默认 `weknora`），与官方 0.1.0 插件同名——**同时装两个会撞名**：撞了就只剩本仓库的先注册成功，另一个报重复。要么卸掉 0.1.0，要么把这里改成 `mem`。
+- **一页一页读**：`read_document` 每次最多 100 段、总字符受 `toolMaxChunkChars` 约束，逼着模型分页读，而不是一次性把整篇灌进上下文。
+
 ## 五、几个刻意的设计取舍
 
 **不改用户原话。** 注入永远走追加，避免任何"提示词污染"式的隐蔽改写。
@@ -151,12 +171,14 @@ git clone https://github.com/RenniMars/dsh-weknora-memory node_modules/@rennimar
 
 ## 九、配置
 
-复制模板，填三样东西：
+配置和记忆数据住在**包目录之外**，所以升级版本（`npm i @rennimars/dsh-weknora-memory@latest`）不会碰到它们：
 
 ```bash
-cd node_modules/@rennimars/dsh-weknora-memory
-cp wk-inject.config.example.json wk-inject.config.json
+mkdir -p ~/.dsh/wk-inject/data
+cp node_modules/@rennimars/dsh-weknora-memory/wk-inject.config.example.json ~/.dsh/wk-inject/wk-inject.config.json
 ```
+
+查找顺序（第一个存在的文件生效）：`WK_INJECT_CONFIG` 指定的文件 → 宿主传入的路径 → `~/.dsh/wk-inject/wk-inject.config.json`（或 `WK_INJECT_HOME` / `DSH_HOME` 指向的目录）→ 包目录里的旧位置（向后兼容）。文件里的相对路径（`profile.path`、`decay.statePath`、`logFile`）都相对**配置文件所在目录**解析，记忆跟着配置走，不跟着包走。
 
 ```json
 {
@@ -173,18 +195,19 @@ cp wk-inject.config.example.json wk-inject.config.json
 - `kbIds` 就是检索范围；`kbNames` 只影响注入块里显示的中文标签。
 - 模板默认 `enabled: false`，填好再改成 `true`（或删掉这一行，默认开启）。
 
+- **四个工具**：`toolsEnabled`（默认 `true`）总开关；`toolPrefix` 改名；`tools: { listKnowledgeBases, search, readDocument, ask }` 逐个关；`toolAgentId` 填了才走 ReAct 管线，`toolMaxResults` / `toolMaxChunkChars` / `toolRequestTimeoutMs` / `toolChatTimeoutMs` / `toolResourceUrls` 是它们各自的预算。关掉 `toolsEnabled` 不影响每轮注入。
 其余参数（超时、字符上限、命中数、阈值、RRF k、邻块扩展、衰减半衰期与下限、冷热分层配额、画像卡配额、事实卡权重、日志路径）见 `lib/config.js` 的 `DEFAULT_CONFIG`，每一项都带注释说明为什么取这个值；一般不用动。
 
 ## 十、隐私与边界
 
-- `data/profile.json`、`data/profile-stats.json`、`data/tier-state.json`、`logs/inject.log` 全部留在本机，不进仓库、不进包（`.gitignore` / `.npmignore` 都排除了）。
+- `profile.json`、`profile-stats.json`、`tier-state.json`、`logs/inject.log` 全部留在本机，默认在 `~/.dsh/wk-inject/`（可用 `WK_INJECT_HOME` 换位置），不进仓库、不进包（`.gitignore` / `.npmignore` 都排除了）。
 - 本插件不向任何第三方上报数据；所有请求只发往你自己配置的 `apiUrl`。
 - 子代理会话默认不检索（`skipSubagents: true`）：子代理拿到的是被裁剪过的任务，用它的文本去检索只会污染主会话的记忆。
 
 ## 十一、开发
 
 ```bash
-npm test          # node --test test/*.mjs，59 个用例
+npm test          # node --test test/*.mjs，71 个用例
 ```
 
 | 文件 | 职责 |
@@ -198,11 +221,15 @@ npm test          # node --test test/*.mjs，59 个用例
 | `lib/config.js` | 配置加载、钳制、日志 |
 | `lib/panel.js` / `lib/client.js` | 面板同源路由 / GUI 侧渲染 |
 | `lib/weknora.js` | 唯一 HTTP 客户端：读侧与写入侧共用 |
+| `lib/mount-tools.js` | 工具挂载缝：本仓库配置 → vendor 配置 → `ctx.tools` |
+| `lib/tools.js` / `lib/tools-client.js` / `lib/render.js` / `lib/tool-config.js` | vendor 自 `@wxg-prc-cpg/dsh-weknora`（MIT）：四个工具、REST+SSE 客户端、渲染、配置校验 |
 | `writers/*.mjs` | 可选写入侧：ingest / distill / dream / profile-writer |
 
 ## License
 
 MIT © RenniMars
+
+其中 `lib/tools.js`、`lib/tools-client.js`、`lib/render.js`、`lib/tool-config.js` 为 vendor 代码，来自 [Tencent/WeKnora](https://github.com/Tencent/WeKnora) 的 `packages/dsh-weknora`（发布于 npm 的 `@wxg-prc-cpg/dsh-weknora` 0.1.0），MIT 许可，版权归 WeKnora 作者所有；除文件头的来源说明外保持原样。
 
 ## 发布流程
 

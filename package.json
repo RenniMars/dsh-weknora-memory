@@ -1,7 +1,7 @@
 {
   "name": "@rennimars/dsh-weknora-memory",
-  "version": "0.3.3",
-  "description": "Layered context engine for DeepSeek Harness: per-kb WeKnora retrieval fused by RRF, recency decay and hot/warm/cold tiering, standing profile cards and fact-conflict surfacing — budgeted, auditable, editable.",
+  "version": "0.4.0",
+  "description": "Layered context engine for DeepSeek Harness: per-kb WeKnora retrieval fused by RRF, recency decay and hot/warm/cold tiering, standing profile cards, fact-conflict surfacing, plus the four WeKnora tools (list / search / read / ask) for pull-on-demand retrieval — budgeted, auditable, editable.",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
@@ -29,7 +29,8 @@
     "weknora",
     "rag",
     "retrieval",
-    "rrf"
+    "rrf",
+    "tools"
   ],
   "license": "MIT",
   "author": "RenniMars",
