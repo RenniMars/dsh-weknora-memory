@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.3.1 — 常驻块按用户轮次投递
+- **修（超时）**：`lib/weknora.js` 的 `request()` 改用自带 `AbortController` + `setTimeout` 计时，不再用 `AbortSignal.timeout()`——后者的定时器是 unref 的，事件循环里没有别的句柄时（Node 20 的 `node --test` 进程正是这样）它会随循环一起退出，挂起的请求永远不会结算，整份测试文件以 `cancelledByParent` 收场。现在 `finally` 里清计时器，超时原因是 `timeout`、连接错误仍是 `transport`。
 
 - **修（画像闸门）**：`writers/profile-writer.mjs` 的复核此前只要「有来源 / 不重复 / 正文 ≤60 字」就把 `proposed` 转 `active`——一晚的静默被当成了决定。现在补上 `export const ATTEST_MIN = 3`：同一话题被反复看到（`propose()` 已有的 `attest` 合并计数）至少 3 次，或卡上 `approve: true`（`--approve` / `decide()` 写入的人工批准），才允许转正，否则记 `needs_approval_or_attest_N_of_3` 保持 `proposed`。
 - **修（CI）**：`test/inject.test.mjs`、`test/layers.test.mjs` 曾 import 本机私有兄弟目录 `../../../_wk_dream/profile-writer.mjs`，本机绿、CI 上 `ERR_MODULE_NOT_FOUND`。改为仓库自带的 `../writers/profile-writer.mjs`。`test/writers.test.mjs` 的 W4 相应改成「人工批准的卡转正 + 只有 2 次证言的卡仍留 proposed」。66 个用例全绿。
