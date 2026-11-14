@@ -8,7 +8,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import { PACKAGE_ROOT, loadConfig, userConfigPath, userDataDir } from "../lib/config.js";
 
@@ -89,8 +89,10 @@ test("with no file anywhere the package root is the fallback home", () => {
 });
 
 test("the user data directory honours WK_INJECT_HOME and DSH_HOME", () => {
-  assert.equal(userDataDir({ WK_INJECT_HOME: "C:/tmp/wk" }), "C:\\tmp\\wk");
-  assert.equal(userConfigPath({ DSH_HOME: "C:/dsh" }), join("C:/dsh", "wk-inject", "wk-inject.config.json"));
+  // Compared through resolve() so the expectation holds on POSIX and on Windows alike.
+  assert.equal(userDataDir({ WK_INJECT_HOME: "wk-home" }), resolve("wk-home"));
+  const dshHome = join(tmpdir(), "wk-dsh");
+  assert.equal(userConfigPath({ DSH_HOME: dshHome }), join(dshHome, "wk-inject", "wk-inject.config.json"));
   assert.ok(userDataDir({}).endsWith(join(".dsh", "wk-inject")));
   assert.ok(PACKAGE_ROOT);
 });
