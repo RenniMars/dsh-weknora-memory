@@ -169,6 +169,16 @@ git clone https://github.com/RenniMars/dsh-weknora-memory node_modules/@rennimar
 
 然后在同目录 `package.json` 的 `dsh.profile.bundles` 里加一行 `"@rennimars/dsh-weknora-memory"`，重启客户端。
 
+**装完之后为什么"什么都没发生"**：包本身不含任何配置和凭据（`wk-inject.config.json`、`data/`、`logs/` 都被 `.npmignore` 排除），所以一个干净安装的行为是——插件正常加载、四个工具正常注册、每轮注入静默降级为空。它不报错、不拖慢会话，但确实什么都不会检索。要让记忆真正工作，得自己补三样：
+
+| 缺什么 | 表现 | 怎么补 |
+|---|---|---|
+| 一个可访问的 WeKnora 实例 | 请求发不出去，注入恒为空 | 改 `apiUrl`；默认 `http://localhost:8080/api/v1` |
+| API key | 服务端 401（工具调用直接报错） | 填 `apiKey`，或用环境变量 `WEKNORA_API_KEY` |
+| 知识库范围 | 没有检索范围，注入恒为空 | 填 `kbIds`（`weknora_list_knowledge_bases` 能列出 id） |
+
+启动日志会点明缺哪项：`not configured yet, injection stays silent: missing apiKey (or WEKNORA_API_KEY) + kbIds -- copy wk-inject.config.example.json to <路径> and fill it in`。看到这条，就是"装好了、但还没配"。
+
 ## 九、配置
 
 配置和记忆数据住在**包目录之外**，所以升级版本（`npm i @rennimars/dsh-weknora-memory@latest`）不会碰到它们：
