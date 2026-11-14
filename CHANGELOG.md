@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.3 — 常驻块改为整场一次，压缩后补一次
+
+- 新增 `pinnedMode`：`session`（默认）/ `turn` / `step`，决定常驻画像块的投递节奏。`session` 在会话首步投一次，之后不再重复；`turn` 是 0.3.1 的按用户轮次行为，`step` 是 0.3.1 之前每步都贴的老行为。
+- 新增 `pinnedRefreshTurns`（默认 8，0 关闭）：`session` 模式下每 N 个 turn 兜底补一次。真实压缩发生在 DSH 之外的代理层，插件在 `agent/pre-step` 拿不到事件，这条是按轮兜底。
+- 自动补投：会话 history 比投递时更短，或游标之后出现 kind 含 `compact` 的节点，立即补一次。
+- 日志新增 `pinned_reason`（`first`/`session`/`turn`/`step`/`compacted`/`refresh`），核实节奏不用再猜。
+- 兼容：`pinnedOncePerTurn: false` 仍映射为 `step`。
+
 ## 0.3.2 — 发布改走 npm 信任发布（OIDC）
 
 - **改（CI）**：`.github/workflows/release.yml` 的发布步骤不再读 `NPM_TOKEN`，只用 `npm publish --access public --provenance` 走 npm 的 trusted publishing：GitHub Actions 用本 workflow 的 OIDC 身份换取短时凭证，仓库里不留任何长期 token。
