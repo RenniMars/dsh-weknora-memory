@@ -19,6 +19,7 @@ import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { request, baseUrlOf } from '../lib/weknora.js';
+import { loadWritersConfigFor } from '../lib/writers-config.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = path.resolve(HERE, '..');
@@ -41,7 +42,7 @@ const USAGE = [
   '',
   '选项:',
   '  --dry-run            只打印本次计划：不写知识库、不写 state、不写任何文件',
-  '  --config <path>      配置文件路径（默认 writers/writer.config.json，缺失时回退 config.example.json 的默认值）',
+  '  --config <path>      指定别的配置文件；默认读共享配置 writers 段（~/.dsh/wk-inject/wk-inject.config.json）',
   '  --verbose, -v        打印每个会话的判定细节（跳过原因、字节数、分片数）',
   '  --limit <n>          本次最多处理 n 个会话（默认不限制）',
   '  --only <substr>      只处理路径里包含 substr 的会话',
@@ -114,49 +115,26 @@ export function num(value, fallback) {
 }
 
 /**
- * 配置 = config.example.json 的默认值 + 用户配置（--config 或 writers/writer.config.json）的覆盖。
- * apiKey 永远只从 WEKNORA_API_KEY 取：文件里即使写了也不读。
+ * 配置解析交给 ../lib/writers-config.js：和读侧共用同一份配置文件。
+ * 顺序是 --config 指定文件 → 共享配置的 writers 段 → writers/writer.config.json → config.example.json。
+ * apiKey 取环境变量 WEKNORA_API_KEY，其次共享配置的 apiKey；writer.config.json 里写的不读。
  */
 export function loadWriterConfig(argv) {
   const args = parseWriterArgs(argv);
-  const notes = [];
-  const exampleFile = path.join(HERE, EXAMPLE_NAME);
-  let file = '';
-  if (args.values.config) {
-    file = path.resolve(process.cwd(), args.values.config);
-    if (!fs.existsSync(file)) throw new Error('配置文件不存在: ' + file);
-  } else {
-    file = path.join(HERE, CONFIG_NAME);
-    if (!fs.existsSync(file)) {
-      file = exampleFile;
-      notes.push('未找到 writers/' + CONFIG_NAME + '，改用 ' + EXAMPLE_NAME + ' 的默认值');
-    }
-  }
-  const base = readJson(exampleFile, '默认配置');
-  const user = file === exampleFile ? {} : readJson(file, '配置文件');
-  const baseIngest = base.ingest || {};
-  const userIngest = user.ingest || {};
-  const baseDistill = base.distill || {};
-  const userDistill = user.distill || {};
-
-  const cfg = {
-    apiUrl: String(user.apiUrl != null ? user.apiUrl : base.apiUrl || '').trim(),
-    apiKey: String(process.env.WEKNORA_API_KEY || '').trim(),
-    sessionsRoot: resolveFromRoot(user.sessionsRoot != null ? user.sessionsRoot : base.sessionsRoot),
-    kbs: {
-      session: String((user.kbs && user.kbs.session) || (base.kbs && base.kbs.session) || ''),
-      knowledge: String((user.kbs && user.kbs.knowledge) || (base.kbs && base.kbs.knowledge) || ''),
-      material: String((user.kbs && user.kbs.material) || (base.kbs && base.kbs.material) || '')
-    },
-    ingest: section(baseIngest, userIngest),
-    distill: Object.assign(section(baseDistill, userDistill), {
-      semanticDedupe: section(baseDistill.semanticDedupe, userDistill.semanticDedupe)
-    }),
-    dream: section(base.dream, user.dream),
-    llm: section(base.llm, user.llm)
-  };
-  if (!cfg.apiKey) notes.push('环境变量 WEKNORA_API_KEY 未设置：本次请求不带 X-API-Key');
-  return { cfg, file, notes };
+  const resolved = loadWritersConfigFor({
+    explicitPath: args.values.config,
+    examplePath: path.join(HERE, EXAMPLE_NAME),
+    legacyPath: path.join(HERE, CONFIG_NAME),
+    env: process.env
+  });
+  const cfg = resolved.cfg;
+  // 相对包根目录解析，与插件读侧 profile.path 的口径一致。
+  cfg.sessionsRoot = resolveFromRoot(cfg.sessionsRoot);
+  cfg.profile = Object.assign({}, cfg.profile, {
+    path: resolveFromRoot(cfg.profile && cfg.profile.path),
+    statsPath: resolveFromRoot(cfg.profile && cfg.profile.statsPath)
+  });
+  return { cfg, file: resolved.file, notes: resolved.notes };
 }
 
 // ---------------- 转录解析 ----------------

@@ -1,3 +1,22 @@
+## 0.5.1 — 写入侧也住进同一个配置文件
+
+用户的原话是「定时器任务，就是写入方，也要放进去」。以前写侧四个脚本各找 `writers/writer.config.json`，
+读侧找 `~/.dsh/wk-inject/wk-inject.config.json`，装完要改两处，改一处忘一处就静默不干活。
+
+- 新增 `lib/writers-config.js`：写侧配置解析的唯一入口。顺序是 `--config` 指定文件 → 共享配置的 `writers` 段
+  （顶层 `apiUrl` 兜底）→ 老的 `writers/writer.config.json` → `writers/config.example.json` 出厂默认值。
+  密钥取环境变量 `WEKNORA_API_KEY`，其次共享配置的 `apiKey`；老文件里写的 `apiKey` 照旧不读。
+- `lib/config-template.js` 新增第 8 节 `writers`：开关、三个库 id、转录目录、四个脚本各自的预算、
+  LLM 网关、计划任务时间，全部带注释；默认 `enabled: false`，不打开不会注册任务、不会写库。
+- `writers/ingest.mjs` / `distill.mjs` / `dream.mjs` / `profile-writer.mjs`：`loadWriterConfig` / `loadConfig`
+  改为委托 `lib/writers-config.js`；`--config` 语义不变（只认指定文件，不叠加）。
+- 新增 `writers/print-config.mjs`：打印最终解析出的写侧配置（来源文件、每条 note、库 id、任务时间），
+  `--json` 给脚本读，密钥打码成 `***后4位`。
+- `writers/register-tasks.ps1`：时间与开关改从 `writers.tasks` / `writers.enabled` 读，
+  `ingest` 支持 `hourly` / `every<N>h` / `every<N>m`；`enabled` 为 false 时拒绝注册，`-Force` 可硬来。
+- 测试：新增 `test/writers-config.test.mjs` 6 例（共享段生效、JSONC 注释、老文件回退、`--config` 不叠加、
+  环境变量密钥优先、配置坏掉不抛）。全量 81 例通过。
+
 ## 0.5.0 — 一份带注释的配置，第一次启动自己生成
 
 装完不用再找模板、不用手抄路径：插件启动时发现配置文件不存在，就按内置模板写一份到 `~/.dsh/wk-inject/wk-inject.config.json`，并在日志里点名缺哪几项、缺了会怎样。

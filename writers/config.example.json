@@ -1,5 +1,5 @@
 {
-  "$comment": "Writers config. Copy to writer.config.json next to this file. No credential belongs in this file: leave apiKey out and set WEKNORA_API_KEY in the environment.",
+  "$comment": "Writers config. 正常不用改这个文件：四个写侧脚本默认读 ~/.dsh/wk-inject/wk-inject.config.json 的 writers 段，本文件只是出厂默认值与 --config 的示例。apiKey 留空即可，它取共享配置里的那把，或环境变量 WEKNORA_API_KEY。",
   "apiUrl": "http://127.0.0.1:8080/api/v1",
   "apiKey": "",
   "sessionsRoot": "",
@@ -53,5 +53,11 @@
     "mode": "weknora-session-chat",
     "modelName": "builtin-deepseek-flash",
     "timeoutMs": 240000
+  },
+  "enabled": false,
+  "tasks": {
+    "ingest": "hourly",
+    "distill": "00:00",
+    "dream": "00:30"
   }
 }

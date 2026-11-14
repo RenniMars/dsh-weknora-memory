@@ -82,21 +82,26 @@ agent/pre-step
 | `writers/distill.mjs` | 会话 → 结论 → 库②（含语义去重，LLM 走 WeKnora 会话网关） |
 | `writers/dream.mjs` | 事实卡裁决 S0–S4，只改 header 状态；`--self-test` 可离线跑 |
 | `writers/profile-writer.mjs` | `data/profile.json` 的唯一写入者；不带 `--write` 就只打印 diff |
-| `writers/register-tasks.ps1` | 幂等注册/更新计划任务（`-Unregister` 撤销，`-Prefix`、`-Times` 可改） |
+| `writers/register-tasks.ps1` | 幂等注册/更新计划任务（`-Unregister` 撤销，时间取自配置里的 `writers.tasks`） |
+| `writers/print-config.mjs` | 打印写侧最终解析出的配置（来源、每段摘要、密钥打码），排障第一步 |
 | `writers/run-all.cmd` | 手动跑一轮：`run-all.cmd [--dry-run] [ingest|distill|dream|profile]` |
 
-三步启用：
+三步启用（**不用第二份配置文件**：写侧和读侧共用第九节那一个文件）：
 
 ```powershell
-cd node_modules/@rennimars/dsh-weknora-memory
-copy writers\config.example.json writers\writer.config.json   # 填 apiUrl / sessionsRoot / kbs
-$env:WEKNORA_API_KEY = "<你的 key>"                            # 只从环境变量读，不落文件
-powershell -ExecutionPolicy Bypass -File writers\register-tasks.ps1
+# 1) 打开读侧那份配置，把 writers.enabled 改成 true，填 writers.kbs 三个库 id 和 sessionsRoot
+notepad $env:USERPROFILE\.dsh\wk-inject\wk-inject.config.json
+
+# 2) 看写侧到底解析成了什么（来源、库 id、计划任务时间，密钥自动打码）
+node node_modules\@rennimars\dsh-weknora-memory\writers\print-config.mjs
+
+# 3) 注册计划任务（enabled 还是 false 时会拒绝注册，加 -Force 可硬来）
+powershell -ExecutionPolicy Bypass -File node_modules\@rennimars\dsh-weknora-memory\writers\register-tasks.ps1
 ```
 
 四条纪律：
 
-- **凭证只在环境变量**：`writer.config.json` 里的 `apiKey` 字段会被忽略；缺 `WEKNORA_API_KEY` 时只提示，不带该请求头。
+- **一份配置管两头**：写侧读同一份 `wk-inject.config.json` 的 `writers` 段，密钥也共用一项（环境变量 `WEKNORA_API_KEY` 仍然优先）；老的 `writers/writer.config.json` 还能读，但只在共享配置没有 `writers` 段时才生效，且里面写的 `apiKey` 一律忽略。
 - **演练零成本**：四个脚本都支持 `--dry-run`（不写库、不写文件、不写 state）；`dream.mjs --dry-run --no-llm` 连一次 LLM 都不发。
 - **共用一份 HTTP**：读侧 `lib/retrieve.js` 与写入侧全部走 `lib/weknora.js`，`X-API-Key` 头与错误词表只有一处实现。
 - **失败可见**：退出码 0/1/2/3 有明确语义，失败是一条可读错误而不是异常栈——这与读侧「失败即静默」刻意相反，因为定时任务没有人在看着。
@@ -220,6 +225,7 @@ not configured yet, injection stays silent: missing apiKey (or WEKNORA_API_KEY) 
 - `kbIds` 就是检索范围；`kbNames` 只影响注入块里显示的中文标签。
 - **四个工具**：`toolsEnabled`（默认 `true`）总开关；`toolPrefix` 改名；`tools: { listKnowledgeBases, search, readDocument, ask }` 逐个关；`toolAgentId` 填了才走 ReAct 管线，`toolMaxResults` / `toolMaxChunkChars` / `toolRequestTimeoutMs` / `toolChatTimeoutMs` / `toolResourceUrls` 是它们各自的预算。关掉 `toolsEnabled` 不影响每轮注入。
 - 其余参数（超时、字符上限、命中数、阈值、RRF k、邻块扩展、衰减半衰期与下限、冷热分层配额、画像卡配额、事实卡权重、常驻块投递模式与刷新轮数、日志路径）全在同一个文件里，模板已逐个写默认值加注释；不改就是默认。
+- **写入侧也在同一个文件里**：`writers` 段管四个定时脚本（会话沉淀 / 结论蒸馏 / 事实裁决 / 画像复核）。默认 `"writers": { "enabled": false }`——不打开就不会创建计划任务、不会往库里写东西。打开要填的三样：`writers.enabled: true`、`writers.kbs` 的三个库 id（会话记忆 / 知识 / 资料）、`writers.sessionsRoot`（DSH 转录目录）；计划任务时间在 `writers.tasks`（`hourly` 或 `HH:MM`）。改完跑 `node writers/print-config.mjs` 可以确认它到底读到了哪份文件、哪个库。
 - 包里另附一份纯 JSON 的同义文件 `wk-inject.config.example.json`（`enabled: false`、无凭据），给不接受注释的老宿主或配置中心用；正常使用不需要它，插件启动时写的那份就够。
 - 画像卡（`profile.cards`）与衰减状态是**数据**不是配置，默认落在同目录的 `data/` 下，由夜间任务写；想手动改某张卡可以在配置里直接塞 `profile.cards`。
 
@@ -241,7 +247,7 @@ npm run sync:install   # 把线上最新版装进 profile（自动钉版本）�
 ## 十一、开发
 
 ```bash
-npm test          # node --test test/*.mjs，71 个用例
+npm test          # node --test test/*.mjs，81 个用例
 ```
 
 | 文件 | 职责 |
@@ -252,12 +258,15 @@ npm test          # node --test test/*.mjs，71 个用例
 | `lib/format.js` | 阈值筛选、事实卡解析、冲突行、受控块渲染 |
 | `lib/tier.js` | hot/warm/cold 分层与回温规则 |
 | `lib/decay.js` | 时效衰减与命中回写（原子 JSON 状态） |
-| `lib/config.js` | 配置加载、钳制、日志 |
+| `lib/config.js` | 配置加载、钳制、日志；JSONC 解析与首次生成模板 |
+| `lib/config-template.js` | 唯一配置文件的模板（带中文注释的九节） |
+| `lib/writers-config.js` | 写侧配置解析：共享配置 `writers` 段 → 老 `writer.config.json` → 出厂默认 |
 | `lib/panel.js` / `lib/client.js` | 面板同源路由 / GUI 侧渲染 |
 | `lib/weknora.js` | 唯一 HTTP 客户端：读侧与写入侧共用 |
 | `lib/mount-tools.js` | 工具挂载缝：本仓库配置 → vendor 配置 → `ctx.tools` |
 | `lib/tools.js` / `lib/tools-client.js` / `lib/render.js` / `lib/tool-config.js` | vendor 自 `@wxg-prc-cpg/dsh-weknora`（MIT）：四个工具、REST+SSE 客户端、渲染、配置校验 |
 | `writers/*.mjs` | 可选写入侧：ingest / distill / dream / profile-writer |
+| `writers/print-config.mjs` / `writers/register-tasks.ps1` | 写侧配置排障（`--json` 给任务注册读） / 幂等注册计划任务 |
 
 ## License
 

@@ -25,6 +25,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { selectProfileCardsDetailed } from '../lib/format.js';
+import { loadWritersConfigFor } from '../lib/writers-config.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -362,23 +363,16 @@ function mergeConfig(base, over) {
 }
 
 function loadConfig(explicit) {
-  if (!fs.existsSync(EXAMPLE_CONFIG)) throw new Error('缺少默认配置：' + EXAMPLE_CONFIG);
-  let file = '';
-  let fallback = false;
-  if (explicit) {
-    if (!fs.existsSync(explicit)) throw new Error('配置文件不存在：' + explicit);
-    file = explicit;
-  } else if (fs.existsSync(DEFAULT_CONFIG)) {
-    file = DEFAULT_CONFIG;
-  } else {
-    file = EXAMPLE_CONFIG;
-    fallback = true;
-  }
-  const defaults = JSON.parse(fs.readFileSync(EXAMPLE_CONFIG, 'utf8'));
-  const raw = file === EXAMPLE_CONFIG ? defaults : JSON.parse(fs.readFileSync(file, 'utf8'));
-  const cfg = mergeConfig(defaults, raw);
-  cfg.__file = file;
-  cfg.__fallback = fallback;
+  // 与另外三个写侧脚本、以及读侧插件共用同一份配置文件的 writers 段。
+  const resolved = loadWritersConfigFor({
+    explicitPath: explicit,
+    examplePath: EXAMPLE_CONFIG,
+    legacyPath: DEFAULT_CONFIG,
+    env: process.env
+  });
+  const cfg = resolved.cfg;
+  cfg.__file = resolved.file;
+  cfg.__fallback = resolved.source === 'example';
   return cfg;
 }
 
@@ -389,7 +383,7 @@ const USAGE = [
   '复核四条全过才转 active，插件标了 degrade 的 active 卡转 disputed。不调用 WeKnora。',
   '',
   '选项：',
-  '  --config <path>    配置文件；默认 writers/writer.config.json，缺省回落到 config.example.json',
+  '  --config <path>    指定别的配置文件；默认读共享配置的 writers 段（~/.dsh/wk-inject/wk-inject.config.json）',
   '  --review           跑一夜的复核（proposed -> active / active -> disputed）',
   '  --write            真正落盘；不加则一律 dry-run（只打印计划与 diff）',
   '  --dry-run          显式 dry-run（默认行为，便于脚本统一传参）',

@@ -10,6 +10,7 @@ import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { request } from '../lib/weknora.js';
+import { loadWritersConfigFor } from '../lib/writers-config.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -34,7 +35,7 @@ const USAGE = [
   '不新建文档、不删除文档。',
   '',
   '选项：',
-  '  --config <path>   配置文件；默认 writers/writer.config.json，缺省回落到 config.example.json',
+  '  --config <path>   指定别的配置文件；默认读共享配置的 writers 段（~/.dsh/wk-inject/wk-inject.config.json）',
   '  --dry-run         只打印计划：不写库、不写 state、不写报告（--dry 同义）',
   '  --no-llm          一次 LLM 请求都不发（配合 --dry-run 做零成本演练）',
   '  --verbose         打印每次裁决的完整 prompt 与配置解析结果',
@@ -64,27 +65,18 @@ function mergeConfig(base, over) {
 }
 
 function loadConfig(explicit) {
-  if (!fs.existsSync(EXAMPLE_CONFIG)) throw new Error('缺少默认配置：' + EXAMPLE_CONFIG);
-  let file = '';
-  let fallback = false;
-  if (explicit) {
-    if (!fs.existsSync(explicit)) throw new Error('配置文件不存在：' + explicit);
-    file = explicit;
-  } else if (fs.existsSync(DEFAULT_CONFIG)) {
-    file = DEFAULT_CONFIG;
-  } else {
-    file = EXAMPLE_CONFIG;
-    fallback = true;
-  }
-  const defaults = JSON.parse(fs.readFileSync(EXAMPLE_CONFIG, 'utf8'));
-  const raw = file === EXAMPLE_CONFIG ? defaults : JSON.parse(fs.readFileSync(file, 'utf8'));
-  const cfg = mergeConfig(defaults, raw);
-  // 凭证只从环境变量取：配置文件里的 apiKey 一律忽略，避免明文密钥进仓库。
-  const fromFile = typeof cfg.apiKey === 'string' && cfg.apiKey ? cfg.apiKey : '';
-  cfg.apiKey = process.env.WEKNORA_API_KEY || '';
-  cfg.__file = file;
-  cfg.__fallback = fallback;
-  cfg.__ignoredFileKey = fromFile !== '';
+  // 配置解析交给 ../lib/writers-config.js：共享配置的 writers 段优先，其次老的 writer.config.json。
+  const resolved = loadWritersConfigFor({
+    explicitPath: explicit,
+    examplePath: EXAMPLE_CONFIG,
+    legacyPath: DEFAULT_CONFIG,
+    env: process.env
+  });
+  const cfg = resolved.cfg;
+  cfg.__file = resolved.file;
+  cfg.__fallback = resolved.source === 'example';
+  cfg.__ignoredFileKey = false;
+  cfg.__notes = resolved.notes;
   return cfg;
 }
 
