@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.2 — 发布改走 npm 信任发布（OIDC）
+
+- **改（CI）**：`.github/workflows/release.yml` 的发布步骤不再读 `NPM_TOKEN`，只用 `npm publish --access public --provenance` 走 npm 的 trusted publishing：GitHub Actions 用本 workflow 的 OIDC 身份换取短时凭证，仓库里不留任何长期 token。
+- **起因**：0.3.1 的流水线红在发布步骤，报 `E_STAGE_REQUIRED` / `E403`——当时用的 granular token 只有暂存权限，实际发布要人工到网页上批准一次。改为信任发布后，打 tag 即发布，不再需要人工批准。
+- **npm 侧配置**（一次性，已在包设置里完成）：trusted publisher 绑定 `RenniMars/dsh-weknora-memory` + `release.yml`，权限 `publish` 与 `stage publish`（trust id `531f2484-847e-42`）。仓库里的 `NPM_TOKEN` secret 已不再被任何 workflow 使用，可删。
+- **文档**：README「发布流程」第 4 步同步改写；新增一句说明为什么不用长期 token。
+- 代码与默认配置未改动，0.3.1 的行为不变。
+
 ## 0.3.1 — 常驻块按用户轮次投递
 - **修（超时）**：`lib/weknora.js` 的 `request()` 改用自带 `AbortController` + `setTimeout` 计时，不再用 `AbortSignal.timeout()`——后者的定时器是 unref 的，事件循环里没有别的句柄时（Node 20 的 `node --test` 进程正是这样）它会随循环一起退出，挂起的请求永远不会结算，整份测试文件以 `cancelledByParent` 收场。现在 `finally` 里清计时器，超时原因是 `timeout`、连接错误仍是 `transport`。
 

@@ -211,7 +211,7 @@ MIT © RenniMars
 1. 改代码 → 在 `CHANGELOG.md` 顶部加一节（版本号 + 变更）→ `package.json` 的 `version` 改成同一个号。
 2. `npm test` 全绿。
 3. `git commit` → `git tag vX.Y.Z` → `git push origin main --follow-tags`。
-4. `.github/workflows/release.yml` 校验 tag 与 `package.json` 版本一致后，跑测试、`npm publish --provenance`（用的是仓库 secret `NPM_TOKEN`），再发 GitHub Release。
+4. `.github/workflows/release.yml` 校验 tag 与 `package.json` 版本一致后，跑测试、`npm publish --provenance`，再发 GitHub Release。发布走 npm 的 **trusted publishing**：GitHub Actions 用本 workflow 的 OIDC 身份换短时凭证，仓库里不放任何长期 token（npm 侧已绑定 `RenniMars/dsh-weknora-memory` + `release.yml`，权限 `publish` 与 `stage publish`）。
 5. `.github/workflows/ci.yml` 在每次 push / PR 上跑 Node 20 与 22 两个版本的测试。
 
 回滚：npm 侧 `npm deprecate @rennimars/dsh-weknora-memory@X.Y.Z "原因"` 并发布修正版；GitHub 侧 `git revert` 后重新打 tag，不移动已有 tag。
@@ -220,5 +220,5 @@ MIT © RenniMars
 
 本项目的演进计划分阶段推进：先给"检索准不准"一把可量化的尺子，再让事实卡的冲突能被裁决、遗忘能被解释、主题能被归并，最后才谈写入门控。
 完整计划（13 节，含每阶段的目标、改动点、验收与回滚）：[docs/ROADMAP.md](docs/ROADMAP.md)
-当前版本 0.3.1；计划可分批实现、每批独立验收，欢迎在 Issue 区按阶段提方案。
+当前版本 0.3.2；计划可分批实现、每批独立验收，欢迎在 Issue 区按阶段提方案。
 想改这份计划，请先开 Issue 讨论，达成一致后再改文档，不要直接改 ROADMAP.md。

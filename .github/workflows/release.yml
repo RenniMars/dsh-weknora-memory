@@ -34,18 +34,8 @@ jobs:
       - name: Ensure npm supports trusted publishing
         run: npm install --global npm@11
 
-      - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [ -z "${NODE_AUTH_TOKEN}" ]; then
-            echo "NPM_TOKEN secret is absent - using npm trusted publishing (OIDC)"
-            npm publish --access public --provenance
-          else
-            echo "publishing with NPM_TOKEN secret"
-            printf '//registry.npmjs.org/:_authToken=%s\n' "$NODE_AUTH_TOKEN" > "$RUNNER_TEMP/.npmrc"
-            NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/.npmrc" npm publish --access public --provenance
-          fi
+      - name: Publish to npm (trusted publishing / OIDC)
+        run: npm publish --access public --provenance
 
       - name: Create GitHub release
         env:
