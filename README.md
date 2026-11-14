@@ -169,44 +169,59 @@ git clone https://github.com/RenniMars/dsh-weknora-memory node_modules/@rennimar
 
 然后在同目录 `package.json` 的 `dsh.profile.bundles` 里加一行 `"@rennimars/dsh-weknora-memory"`，重启客户端。
 
-**装完之后为什么"什么都没发生"**：包本身不含任何配置和凭据（`wk-inject.config.json`、`data/`、`logs/` 都被 `.npmignore` 排除），所以一个干净安装的行为是——插件正常加载、四个工具正常注册、每轮注入静默降级为空。它不报错、不拖慢会话，但确实什么都不会检索。要让记忆真正工作，得自己补三样：
+**装完不会"什么都没发生"**：第一次启动时插件会自己生成唯一的配置文件——`~/.dsh/wk-inject/wk-inject.config.json`（Windows 上是 `C:\Users\<你>\.dsh\wk-inject\`）。它自带中文注释，把每一段是干什么的、留空会怎样都写在里面；支持 `//`、`/* */` 注释和尾随逗号，不用写得像 JSON。
 
-| 缺什么 | 表现 | 怎么补 |
+启动日志会有这么三行，意思是"装好了、还没填"：
+
+```
+weknora-inject ready (WeKnora http://127.0.0.1:8080/api/v1)
+config template created at C:\Users\<你>\.dsh\wk-inject\wk-inject.config.json -- fill in apiUrl / apiKey / kbIds there
+not configured yet, injection stays silent: missing apiKey (or WEKNORA_API_KEY) + kbIds -- open <该文件> and fill in those fields, then restart DSH
+```
+
+打开那个文件，只填三样，保存后重启客户端：
+
+| 缺什么 | 不填的表现 | 填在哪儿 |
 |---|---|---|
-| 一个可访问的 WeKnora 实例 | 请求发不出去，注入恒为空 | 改 `apiUrl`；默认 `http://localhost:8080/api/v1` |
-| API key | 服务端 401（工具调用直接报错） | 填 `apiKey`，或用环境变量 `WEKNORA_API_KEY` |
-| 知识库范围 | 没有检索范围，注入恒为空 | 填 `kbIds`（`weknora_list_knowledge_bases` 能列出 id） |
+| 一个可访问的 WeKnora 实例 | 请求发不出去，注入恒为空 | `apiUrl`，默认 `http://127.0.0.1:8080/api/v1` |
+| API key | 服务端 401（工具调用直接报错） | `apiKey`，或环境变量 `WEKNORA_API_KEY` |
+| 知识库范围 | 没有检索范围，注入恒为空 | `kbIds`（不知道 id 就问模型："用 `weknora_list_knowledge_bases` 列一下知识库"） |
 
-启动日志会点明缺哪项：`not configured yet, injection stays silent: missing apiKey (or WEKNORA_API_KEY) + kbIds -- copy wk-inject.config.example.json to <路径> and fill it in`。看到这条，就是"装好了、但还没配"。
+填完重启，日志会多一行 `backend ok: N knowledge base(s) visible`——那就是通了；如果写的是 `backend unreachable: …`，按提示回去查 `apiUrl` / `apiKey`。包本身依旧不带任何配置和凭据（`data/`、`logs/` 也在 `.npmignore` 里），所以升级换版本不会动你这份文件。
 
 ## 九、配置
 
-配置和记忆数据住在**包目录之外**，所以升级版本（`npm i @rennimars/dsh-weknora-memory@latest`）不会碰到它们：
+**配置只有一个文件**：`~/.dsh/wk-inject/wk-inject.config.json`（或 `WK_INJECT_HOME` / `DSH_HOME` 指向的目录下）。它住在包里之外，所以 `npm i @rennimars/dsh-weknora-memory@latest` 升级版本不会碰到它；文件里没写的字段全部走默认值，删掉某个字段也不会报错。文件不存在时插件启动会按内置模板（`lib/config-template.js`）自动生成一份带注释的，**不需要手动复制**。
 
-```bash
-mkdir -p ~/.dsh/wk-inject/data
-cp node_modules/@rennimars/dsh-weknora-memory/wk-inject.config.example.json ~/.dsh/wk-inject/wk-inject.config.json
-```
+查找顺序（第一个存在的文件生效）：`WK_INJECT_CONFIG` 指定的文件 → 宿主传入的路径 → `~/.dsh/wk-inject/wk-inject.config.json` → 包目录里的旧位置（向后兼容老安装）。文件里的相对路径（`profile.path`、`decay.statePath`、`logFile`）都相对**配置文件所在目录**解析，记忆跟着配置走，不跟着包走。
 
-查找顺序（第一个存在的文件生效）：`WK_INJECT_CONFIG` 指定的文件 → 宿主传入的路径 → `~/.dsh/wk-inject/wk-inject.config.json`（或 `WK_INJECT_HOME` / `DSH_HOME` 指向的目录）→ 包目录里的旧位置（向后兼容）。文件里的相对路径（`profile.path`、`decay.statePath`、`logFile`）都相对**配置文件所在目录**解析，记忆跟着配置走，不跟着包走。
+文件长这样（节选，真实模板比这长得多，每节都有注释）：
 
-```json
+```jsonc
 {
+  // 总开关：false 时插件什么都不做（不注入，也不注册工具）。
   "enabled": true,
   "apiUrl": "http://127.0.0.1:8080/api/v1",
   "apiKey": "",
   "kbIds": ["<知识库 id>", "<知识库 id>"],
   "kbNames": { "<知识库 id>": "知识" },
-  "kbLabel": "知识"
+  "kbLabel": "知识",
+
+  // 常驻层：不做检索也每轮都带着的规则（一条一句，别写长）。
+  "pinned": [{ "reason": "tools", "text": "记忆库能主动查：weknora_search / weknora_read_document / weknora_ask。" }],
+
+  // 工具组：关掉 toolsEnabled 只是不注册四个 weknora_* 工具，每轮注入照旧。
+  "toolsEnabled": true,
+  "tools": { "listKnowledgeBases": true, "search": true, "readDocument": true, "ask": true }
 }
 ```
 
 - **apiKey 建议不要写进文件**：留空，用环境变量 `WEKNORA_API_KEY`（可选 `WEKNORA_API_URL`）注入。环境变量优先于文件，同一份配置可在不同机器上用不同 key。
 - `kbIds` 就是检索范围；`kbNames` 只影响注入块里显示的中文标签。
-- 模板默认 `enabled: false`，填好再改成 `true`（或删掉这一行，默认开启）。
-
 - **四个工具**：`toolsEnabled`（默认 `true`）总开关；`toolPrefix` 改名；`tools: { listKnowledgeBases, search, readDocument, ask }` 逐个关；`toolAgentId` 填了才走 ReAct 管线，`toolMaxResults` / `toolMaxChunkChars` / `toolRequestTimeoutMs` / `toolChatTimeoutMs` / `toolResourceUrls` 是它们各自的预算。关掉 `toolsEnabled` 不影响每轮注入。
-其余参数（超时、字符上限、命中数、阈值、RRF k、邻块扩展、衰减半衰期与下限、冷热分层配额、画像卡配额、事实卡权重、日志路径）见 `lib/config.js` 的 `DEFAULT_CONFIG`，每一项都带注释说明为什么取这个值；一般不用动。
+- 其余参数（超时、字符上限、命中数、阈值、RRF k、邻块扩展、衰减半衰期与下限、冷热分层配额、画像卡配额、事实卡权重、常驻块投递模式与刷新轮数、日志路径）全在同一个文件里，模板已逐个写默认值加注释；不改就是默认。
+- 包里另附一份纯 JSON 的同义文件 `wk-inject.config.example.json`（`enabled: false`、无凭据），给不接受注释的老宿主或配置中心用；正常使用不需要它，插件启动时写的那份就够。
+- 画像卡（`profile.cards`）与衰减状态是**数据**不是配置，默认落在同目录的 `data/` 下，由夜间任务写；想手动改某张卡可以在配置里直接塞 `profile.cards`。
 
 ### 升级与版本对齐
 

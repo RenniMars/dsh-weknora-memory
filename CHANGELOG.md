@@ -1,3 +1,13 @@
+## 0.5.0 — 一份带注释的配置，第一次启动自己生成
+
+装完不用再找模板、不用手抄路径：插件启动时发现配置文件不存在，就按内置模板写一份到 `~/.dsh/wk-inject/wk-inject.config.json`，并在日志里点名缺哪几项、缺了会怎样。
+
+- 新增 `lib/config-template.js`：唯一的配置模板（36 个键、八节中文注释），说明"三件事填完就能用（apiUrl / apiKey / kbIds）"以及每个字段留空是什么行为。
+- 配置解析支持注释与尾随逗号：`parseJsonc()`（新增 `stripJsonComments()`），`loadConfig()` 与画像卡读取都走它；纯 JSON 照旧可用，老配置文件不用改。
+- 新增 `ensureUserConfig()`：只在文件不存在时写入模板，永不覆盖已存在的配置；写入失败只记日志，不影响启动。
+- 启动日志加两行：`config template created at <路径>` 与 `not configured yet, injection stays silent: missing … -- open <路径> and fill in those fields`；配置齐了则做一次 4 秒探活，成功记 `backend ok: N knowledge base(s) visible`，失败记 `backend unreachable: <原因> -- check apiUrl / apiKey in <路径>`。
+- 测试：新增 `test/config-template.test.mjs`（模板可解析且覆盖关键键、只写一次不覆盖、JSONC 能读入、模板原样拷贝=未配置、纯 JSON 兼容）；`apply()` 用例改为 hermetic home，不再往真实 `~/.dsh` 写文件。共 75 例。
+- README：安装与配置两节重写为"一个文件"——自动生成、日志怎么读、三样怎么填、哪些字段可以删；纯 JSON 同义文件作为可选项说明。
 ## 0.4.2 — 未配置时的首次提示
 
 - 启动时自检：`apiKey`（或 `WEKNORA_API_KEY`）与 `kbIds` 任一为空，就在日志里说明缺哪项、配置文件该放哪里。此前一个干净安装是"静默什么都不做"，装的人无从判断是没配好还是没生效。

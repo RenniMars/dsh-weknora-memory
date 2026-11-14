@@ -362,7 +362,17 @@ test("apply() wires a working pre-step listener into a cordis-like context", asy
     // pinned is switched off here: this test is about the wiring, not the standing rules.
     // The decay state file is redirected too: apply() loads its own config, and a test
     // that files synthetic chunk ids into data/ would poison the next real run.
+    // A hermetic home: apply() writes the config template on a first start, and a test
+    // must never drop files into the real ~/.dsh.
+    const previousHome = process.env.WK_INJECT_HOME;
+    const hermeticHome = join(tmpdir(), "wk-inject-apply-test-" + process.pid);
+    process.env.WK_INJECT_HOME = hermeticHome;
+    try {
     plugin.apply(ctx, { logFile: TEST_LOG, pinned: [], profile: { enabled: false }, decay: { statePath: TEST_STATE } });
+    } finally {
+      if (previousHome === undefined) delete process.env.WK_INJECT_HOME;
+      else process.env.WK_INJECT_HOME = previousHome;
+    }
     assert.ok(listeners.has("agent/pre-step"), "apply must register agent/pre-step");
     const handler = listeners.get("agent/pre-step");
     const decision = decisionOf("WeKnora 的检索接口怎么调用，需要什么请求头？");
