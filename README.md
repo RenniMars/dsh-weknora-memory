@@ -198,6 +198,15 @@ cp node_modules/@rennimars/dsh-weknora-memory/wk-inject.config.example.json ~/.d
 - **四个工具**：`toolsEnabled`（默认 `true`）总开关；`toolPrefix` 改名；`tools: { listKnowledgeBases, search, readDocument, ask }` 逐个关；`toolAgentId` 填了才走 ReAct 管线，`toolMaxResults` / `toolMaxChunkChars` / `toolRequestTimeoutMs` / `toolChatTimeoutMs` / `toolResourceUrls` 是它们各自的预算。关掉 `toolsEnabled` 不影响每轮注入。
 其余参数（超时、字符上限、命中数、阈值、RRF k、邻块扩展、衰减半衰期与下限、冷热分层配额、画像卡配额、事实卡权重、日志路径）见 `lib/config.js` 的 `DEFAULT_CONFIG`，每一项都带注释说明为什么取这个值；一般不用动。
 
+### 升级与版本对齐
+
+```bash
+npm run sync           # 本地仓库 / npm 线上 / 已安装 三个版本一眼看清
+npm run sync:install   # 把线上最新版装进 profile（自动钉版本），然后重启 DSH
+```
+
+日常流程只有一条线：本地改 → `npm test` → 提版本号 → 打 tag（CI 自动发 npm 与 Release）→ `npm run sync:install` → 重启。跑的是装进去的那个包，不是仓库目录，所以「本地改了但没发版」在机器上永远不会悄悄生效。
+
 ## 十、隐私与边界
 
 - `profile.json`、`profile-stats.json`、`tier-state.json`、`logs/inject.log` 全部留在本机，默认在 `~/.dsh/wk-inject/`（可用 `WK_INJECT_HOME` 换位置），不进仓库、不进包（`.gitignore` / `.npmignore` 都排除了）。

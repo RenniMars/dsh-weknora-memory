@@ -14,6 +14,11 @@
 
 # Changelog
 
+## 0.4.1 — 线上版本对齐工具
+
+- 新增 `scripts/sync-online.mjs`（`npm run sync` / `npm run sync:install`）：一条命令报出「本地仓库 / npm 线上 / 已安装」三个版本，`--install` 直接把线上最新版的 tarball 覆盖到 profile 的 `node_modules`，并把 `package.json` 里的依赖钉成精确版本。旧的那种指回仓库的符号链接会被删掉——它不是一个版本，是磁盘现状。
+- 用户数据（配置、画像卡、衰减状态、日志）在 `<DSH_HOME>/wk-inject`，安装脚本不碰它们。
+
 ## 0.3.3 — 常驻块改为整场一次，压缩后补一次
 
 - 新增 `pinnedMode`：`session`（默认）/ `turn` / `step`，决定常驻画像块的投递节奏。`session` 在会话首步投一次，之后不再重复；`turn` 是 0.3.1 的按用户轮次行为，`step` 是 0.3.1 之前每步都贴的老行为。
